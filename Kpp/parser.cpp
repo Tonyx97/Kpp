@@ -8,13 +8,12 @@ using namespace kpp;
 
 void ast::Printer::print_body(ast::StmtBody* body)
 {
+	printf_s("begin body\n");
+
 	for (auto&& stmt_base : body->stmts)
 	{
 		if (stmt_base->is_body)
-		{
-			printf_s("begin body\n");
 			print_body((ast::StmtBody*)stmt_base);
-		}
 		else
 		{
 			auto stmt = (ast::Stmt*)stmt_base;
@@ -29,9 +28,9 @@ void ast::Printer::print_prototype(ast::Prototype* prototype)
 {
 	printf_s("begin prototype '%s'\n", prototype->name.c_str());
 
-	printf_s("begin body\n");
-
 	print_body(prototype->body);
+
+	printf_s("end prototype '%s'\n", prototype->name.c_str());
 }
 
 void ast::Printer::print(const std::vector<ast::Prototype*>& prototypes)
@@ -77,7 +76,9 @@ ast::Prototype* parser::parse_prototype()
 				{
 					printf_s("we got a function '%s'\n", prototype_name.c_str());
 
-					if (auto prototype = new ast::Prototype(prototype_name); prototype->body = parse_body())
+					auto prototype = new ast::Prototype(prototype_name);
+
+					if (prototype->body = parse_body(nullptr))
 						return prototype;
 					else printf_s("Failed parsing main prototype body\n");
 				}
@@ -90,40 +91,20 @@ ast::Prototype* parser::parse_prototype()
 	return nullptr;
 }
 
-ast::StmtBody* parser::parse_body()
+ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 {
-	auto bracket_open = lex.eat_expect(TKN_BRACKET_OPEN);
-	if (!bracket_open)
+	if (lex.current_token() != TKN_BRACKET_OPEN)
 		return nullptr;
-	
-	auto main_body = new ast::StmtBody(),
-		 curr_body = main_body;
+
+	lex.eat();
+
+	auto curr_body = ast::StmtBody::create();
 
 	while (!lex.eof())
 	{
-		ast::StmtBody* sub_body = nullptr;
+		if (auto new_body = parse_body(curr_body))
+			curr_body->stmts.push_back(new_body);
 
-		if (lex.current_token() == TKN_BRACKET_OPEN)
-		{
-			lex.eat();
-
-			if (lex.current_token() != TKN_BRACKET_CLOSE)
-			{
-				auto new_body = ast::StmtBody::create();
-
-				if (sub_body)
-				{
-					sub_body->stmts.push_back(new_body);
-				}
-				else
-				{
-					curr_body->stmts.push_back(new_body);
-				}
-
-				curr_body = sub_body = new_body;
-			}
-		}
-		
 		if (auto stmt = parse_statement())
 		{
 			curr_body->stmts.push_back(stmt);
@@ -131,20 +112,9 @@ ast::StmtBody* parser::parse_body()
 			lex.eat();
 		}
 		else break;
-
-		if (sub_body)
-		{
-			if (lex.current_token() == TKN_BRACKET_CLOSE)
-			{
-				lex.eat();
-
-				curr_body = sub_body;
-			}
-			else printf_s("Failed parsing prototype body\n");
-		}
 	}
 
-	return (lex.eat_expect(TKN_BRACKET_CLOSE) ? main_body : nullptr);
+	return (lex.eat_expect(TKN_BRACKET_CLOSE) ? curr_body : nullptr);
 }
 
 ast::Stmt* parser::parse_statement()

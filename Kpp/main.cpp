@@ -20,10 +20,11 @@ int main()
 
 	parser.parse();
 
-	printf_s("---------- IR ----------\n");
+	printf_s("---------- AST ----------\n");
 
 	parser.print_ast();
 
+	printf_s("---------- IR ----------\n");
 	printf_s("---------- ASM ----------\n");
 	
 	return std::cin.get();

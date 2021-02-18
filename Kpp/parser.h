@@ -79,7 +79,7 @@ namespace kpp
 		bool parse();
 
 		ast::Prototype* parse_prototype();
-		ast::StmtBody* parse_body();
+		ast::StmtBody* parse_body(ast::StmtBody* body);
 		ast::Stmt* parse_statement();
 		ast::Expr* parse_expression();
 		void parse_literal();
