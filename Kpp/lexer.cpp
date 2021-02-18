@@ -87,9 +87,6 @@ bool lexer::parse(const std::string& filename)
 
 			token_info curr_token;
 			
-			std::regex word_regex(regex::WORD),
-					   int_regex(regex::INT_LITERAL);
-
 			bool valid = false;
 
 			const std::string token_small = line.substr(0, 1),
@@ -152,8 +149,8 @@ bool lexer::parse(const std::string& filename)
 					return false;
 				};
 
-				if (!check_token_regex(word_regex, TKN_ID))
-					check_token_regex(int_regex, TKN_INT_LITERAL);
+				if (!check_token_regex(regex::WORD, TKN_ID))
+					check_token_regex(regex::INT_LITERAL, TKN_INT_LITERAL);
 			}
 
 			if (valid)

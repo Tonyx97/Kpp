@@ -114,7 +114,12 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 		else break;
 	}
 
-	return (lex.eat_expect(TKN_BRACKET_CLOSE) ? curr_body : nullptr);
+	if (lex.eat_expect(TKN_BRACKET_CLOSE))
+		return curr_body;
+	
+	parser_error("Expected a '}', got '%s'", lex.eof() ? "EOF" : lex.current_value().c_str());
+	
+	return nullptr;
 }
 
 ast::Stmt* parser::parse_statement()
