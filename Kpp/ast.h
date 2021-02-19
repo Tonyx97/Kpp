@@ -19,42 +19,47 @@ namespace kpp
 			std::string name;
 			Token type;
 
-			static Stmt* create(const std::string& name, Token type)
-			{
-				auto stmt = new Stmt();
+			Stmt(const std::string& name, Token type) : name(name), type(type)	{ is_body = false; }
 
-				stmt->name = name;
-				stmt->type = type;
-				stmt->is_body = false;
+			static Stmt* create(const std::string& name, Token type)			{ return  new Stmt(name, type); }
+		};
 
-				return stmt;
-			}
+		struct StmtDecl : public StmtBase
+		{
+			std::string name;
+			Token type;
+
+			StmtDecl(const std::string& name, Token type) : name(name), type(type)	{ is_body = true; }
+
+			static StmtDecl* create(const std::string& name, Token type)			{ return new StmtDecl(name, type); }
 		};
 
 		struct StmtBody : public StmtBase
 		{
 			std::vector<StmtBase*> stmts;
 
-			static StmtBody* create()
-			{
-				auto stmt = new StmtBody();
+			StmtBody()					{ is_body = true; }
 
-				stmt->is_body = true;
-
-				return stmt;
-			}
+			static StmtBody* create()	{ return new StmtBody(); }
 		};
 
 		struct Prototype
 		{
+			std::vector<StmtBase*> stmts;
+
 			std::string name;
+
 			StmtBody* body;
 
-			Prototype(const std::string& name) : name(name) {}
+			Prototype(const std::string& name) : name(name)		{}
+			
+			static Prototype* create(const std::string& name)	{ return new Prototype(name); }
 		};
 
 		struct Printer
 		{
+			int curr_level = 0;
+
 			void print_body(ast::StmtBody* body);
 			void print_prototype(Prototype* prototype);
 			void print(const std::vector<Prototype*>& prototypes);

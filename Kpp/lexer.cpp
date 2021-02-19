@@ -85,24 +85,11 @@ bool lexer::parse(const std::string& filename)
 			if (std::regex_search(line, sm, regex::SINGLE_COMMENT))
 				break;
 
-			token_info curr_token;
+			token_info curr_token {};
 			
-			bool valid = false;
-
-			const std::string token_small = line.substr(0, 1),
-							  token_medium = line.substr(0, 2),
-							  token_big = line.substr(0, 3);
-
 			for (auto&& [token, id] : static_tokens)
 			{
-				switch (token.length())
-				{
-				case 1: valid = !token.compare(token_small);  break;
-				case 2: valid = !token.compare(token_medium); break;
-				case 3: valid = !token.compare(token_big);	  break;
-				}
-
-				if (valid)
+				if (!line.compare(0, token.length(), token))
 				{
 					curr_token.value = token;
 					curr_token.id = id;
@@ -110,32 +97,29 @@ bool lexer::parse(const std::string& filename)
 				}
 			}
 		
-			if (!valid)
+			if (!curr_token)
 			{
 				auto check_token_regex = [&](const std::regex& rgx, Token token_type)
 				{
-					if (valid)
-						return false;
-
 					if (std::regex_search(line, sm, rgx))
 					{
-						if (auto token_found = sm.str(); valid = (line.find(token_found) == 0))
+						if (auto token_found = sm.str(); line.find(token_found) == 0)
 						{
 							curr_token.value = token_found;
 
 							switch (token_type)
 							{
-							case TKN_ID:
+							case TOKEN_ID:
 							{
 								if (auto it = keywords.find(token_found); it != keywords.end())
 									curr_token.id = it->second.id;
-								else if (auto it_decl = keywords_decl.find(token_found); it_decl != keywords_decl.end())
+								else if (auto it_decl = keywords_type.find(token_found); it_decl != keywords_type.end())
 									curr_token.id = it_decl->second.id;
 								else curr_token.id = token_type;
 
 								break;
 							}
-							case TKN_INT_LITERAL:
+							case TOKEN_INT_LITERAL:
 							{
 								curr_token.id = token_type;
 								break;
@@ -149,11 +133,11 @@ bool lexer::parse(const std::string& filename)
 					return false;
 				};
 
-				if (!check_token_regex(regex::WORD, TKN_ID))
-					check_token_regex(regex::INT_LITERAL, TKN_INT_LITERAL);
+				if (!check_token_regex(regex::WORD, TOKEN_ID))
+					check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL);
 			}
 
-			if (valid)
+			if (curr_token)
 			{
 				tokens.push_back(curr_token);
 
@@ -178,7 +162,11 @@ bool lexer::parse(const std::string& filename)
 	}
 
 	for (auto&& token : tokens)
-		printf_s("'%s' %i\n", token.value.c_str(), token.id);
+	{
+		PRINT_ALIGN(C_YELLOW, 15, "'%s'", token.value.c_str());
+		PRINT_ALIGN(C_YELLOW, 15, "->");
+		PRINT(C_YELLOW, "type: %s", STRINGIFY_TOKEN(token.id).c_str());
+	}
 
 	std::reverse(tokens.begin(), tokens.end());
 
@@ -192,7 +180,7 @@ std::optional<token_info> lexer::eat_expect(Token expected_token)
 
 	if (auto curr = current(); curr.id != expected_token)
 	{
-		printf_s("Unexpected token '%s'\n", curr.value.c_str());
+		PRINT(C_RED, "Unexpected token '%s'", curr.value.c_str());
 		return {};
 	}
 	else
@@ -208,9 +196,9 @@ std::optional<token_info> lexer::eat_expect_keyword_declaration()
 	if (eof())
 		return {};
 
-	if (auto curr = current(); !is_token_keyword_decl(curr))
+	if (auto curr = current(); !is_token_keyword_type(curr))
 	{
-		printf_s("Unexpected token '%s'\n", curr.value.c_str());
+		PRINT(C_RED, "Unexpected token '%s'", curr.value.c_str());
 		return {};
 	}
 	else
@@ -233,18 +221,18 @@ token_info lexer::eat()
 	return curr;
 }
 
+void lexer::push_and_pop_token(const token_info& token)
+{
+	eaten_tokens.push_back(token);
+	tokens.pop_back();
+}
+
 bool lexer::is_token_keyword(const token_info& token)
 {
 	return (keywords.find(token.value) != keywords.end());
 }
 
-bool lexer::is_token_keyword_decl(const token_info& token)
+bool lexer::is_token_keyword_type(const token_info& token)
 {
-	return (keywords_decl.find(token.value) != keywords_decl.end());
-}
-
-void lexer::push_and_pop_token(const token_info& token)
-{
-	eaten_tokens.push_back(token);
-	tokens.pop_back();
+	return (keywords_type.find(token.value) != keywords_type.end());
 }

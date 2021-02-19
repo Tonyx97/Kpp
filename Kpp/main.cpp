@@ -6,7 +6,7 @@
 
 int main()
 {
-	printf_s("---------- LEXER ----------\n");
+	PRINT(C_WHITE, "---------- LEXER ----------");
 
 	kpp::lexer lexer;
 
@@ -14,18 +14,18 @@ int main()
 
 	lexer.parse("test.kpp");
 
-	printf_s("---------- PARSER ----------\n");
+	PRINT(C_WHITE, "---------- PARSER ----------");
 
 	kpp::parser parser(lexer);
 
 	parser.parse();
 
-	printf_s("---------- AST ----------\n");
+	PRINT(C_WHITE, "---------- AST ----------");
 
 	parser.print_ast();
 
-	printf_s("---------- IR ----------\n");
-	printf_s("---------- ASM ----------\n");
+	PRINT(C_WHITE, "---------- IR ----------");
+	PRINT(C_WHITE, "---------- ASM ----------");
 	
 	return std::cin.get();
 }

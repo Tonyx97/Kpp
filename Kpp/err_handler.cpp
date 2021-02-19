@@ -12,14 +12,14 @@ void kpp::critical_error()
 
 void kpp::lexer_error(const char* str)
 {
-	printf_s("LEXICAL ERROR: '%s'\n", str);
+	PRINT(C_RED, "LEXICAL ERROR: %s", str);
 }
 
 void kpp::parser_error(const char* str)
 {
 	if (err_lexer->eof())
-		printf_s("SYNTAX ERROR: '%s' (found end-of-fine)\n", str);
-	else printf_s("SYNTAX ERROR: '%s'\n", str);
+		PRINT(C_RED, "SYNTAX ERROR: %s (found end-of-line)", str);
+	else PRINT(C_RED, "SYNTAX ERROR: %s", str);
 
 	critical_error();
 }

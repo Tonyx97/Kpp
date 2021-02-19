@@ -19,6 +19,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ast.h" />
+    <ClInclude Include="debug.h" />
     <ClInclude Include="err_handler.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="defs.h" />

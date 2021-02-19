@@ -25,7 +25,8 @@ namespace kpp
 		ast::StmtBody* parse_body(ast::StmtBody* body);
 		ast::Stmt* parse_statement();
 		ast::Expr* parse_expression();
-		void parse_literal();
+		opt_token_info parse_type();
+		opt_token_info parse_id();
 
 	};
 }
