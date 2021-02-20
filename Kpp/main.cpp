@@ -4,7 +4,7 @@
 #include "parser.h"
 #include "err_handler.h"
 
-int main()
+int main(int argc, char** argv)
 {
 	PRINT(C_WHITE, "---------- LEXER ----------\n");
 
@@ -14,7 +14,10 @@ int main()
 
 	{
 		PROFILE("Lexer Time");
-		lexer.parse("test.kpp");
+
+		if (argc != 1)
+			lexer.parse(argv[1]);
+		else lexer.parse("test.kpp");
 	}
 
 	lexer.print_list();
