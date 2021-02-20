@@ -47,6 +47,9 @@ namespace kpp
 		TOKEN_NOT,
 		TOKEN_ASSIGN,
 
+		TOKEN_LOGICAL_AND,
+		TOKEN_LOGICAL_OR,
+
 		TOKEN_EQUAL,
 		TOKEN_NOT_EQUAL,
 		TOKEN_GT,
@@ -54,6 +57,8 @@ namespace kpp
 
 		TOKEN_VOID,
 		TOKEN_BOOL,
+		TOKEN_TRUE,
+		TOKEN_FALSE,
 		TOKEN_U8,
 		TOKEN_U16,
 		TOKEN_U32,
@@ -76,10 +81,15 @@ namespace kpp
 		TOKEN_NONE,
 	};
 
+	static constexpr int LOWEST_PRECEDENCE = 16;
+
 	struct token_info
 	{
 		std::string value;
+
 		Token id = TOKEN_NONE;
+
+		int precedence = LOWEST_PRECEDENCE;
 
 		template <typename T>
 		T get()
@@ -95,75 +105,79 @@ namespace kpp
 		operator bool() { return (id != TOKEN_NONE); }
 	};
 
-	inline std::unordered_map<std::string, token_info> keywords =
+	inline std::unordered_map<std::string, Token> keywords =
 	{
-		{ "for",		{ "for",		TOKEN_FOR } },
-		{ "while",		{ "while",		TOKEN_WHILE } },
-		{ "if",			{ "if",			TOKEN_IF } },
-		{ "else",		{ "else",		TOKEN_ELSE } },
-		{ "break",		{ "break",		TOKEN_BREAK } },
-		{ "continue",	{ "continue",	TOKEN_CONTINUE } },
-		{ "return",		{ "return",		TOKEN_RETURN } },
-		{ "extern",		{ "extern",		TOKEN_EXTERN } },
+		{ "for",		TOKEN_FOR },
+		{ "while",		TOKEN_WHILE },
+		{ "if",			TOKEN_IF },
+		{ "else",		TOKEN_ELSE },
+		{ "break",		TOKEN_BREAK },
+		{ "continue",	TOKEN_CONTINUE },
+		{ "return",		TOKEN_RETURN },
+		{ "extern",		TOKEN_EXTERN },
 	};
-
-	inline std::unordered_map<std::string, token_info> keywords_type =
+	
+	inline std::unordered_map<std::string, Token> keywords_type =
 	{
-		{ "void",	{ "void",	TOKEN_VOID } },
-		{ "bool",	{ "bool",	TOKEN_BOOL } },
-		{ "u8",		{ "u8",		TOKEN_U8 } },
-		{ "u16",	{ "u16",	TOKEN_U16 } },
-		{ "u32",	{ "u32",	TOKEN_U32 } },
-		{ "u64",	{ "u64",	TOKEN_U64 } },
-		{ "i8",		{ "i8",		TOKEN_I8 } },
-		{ "i16",	{ "i16",	TOKEN_I16 } },
-		{ "i32",	{ "i32",	TOKEN_I32 } },
-		{ "i64",	{ "i64",	TOKEN_I64 } },
-		{ "m128",	{ "m128",	TOKEN_M128 } },
+		{ "void",	TOKEN_VOID },
+		{ "bool",	TOKEN_BOOL },
+		{ "true",	TOKEN_TRUE },
+		{ "false",	TOKEN_FALSE },
+		{ "u8",		TOKEN_U8 },
+		{ "u16",	TOKEN_U16 },
+		{ "u32",	TOKEN_U32 },
+		{ "u64",	TOKEN_U64 },
+		{ "i8",		TOKEN_I8 },
+		{ "i16",	TOKEN_I16 },
+		{ "i32",	TOKEN_I32 },
+		{ "i64",	TOKEN_I64 },
+		{ "m128",	TOKEN_M128 },
 	};
 
 	inline token_info static_tokens[] =
 	{
-		{ ">>=", TOKEN_SHR_ASSIGN },
-		{ "<<=", TOKEN_SHL_ASSIGN },
+		{ ">>=", TOKEN_SHR_ASSIGN, 14 },
+		{ "<<=", TOKEN_SHL_ASSIGN, 14 },
 
-		{ "==", TOKEN_EQUAL },
-		{ "!=", TOKEN_NOT_EQUAL },
-		{ ">=", TOKEN_GTE },
-		{ "<=", TOKEN_LTE },
-		{ "+=", TOKEN_ADD_ASSIGN },
-		{ "-=", TOKEN_SUB_ASSIGN },
-		{ "++", TOKEN_INC },
-		{ "--", TOKEN_DEC },
-		{ "*=", TOKEN_MUL_ASSIGN },
-		{ "%=", TOKEN_MOD_ASSIGN },
-		{ "/=", TOKEN_DIV_ASSIGN },
-		{ "&=", TOKEN_AND_ASSIGN },
-		{ "|=", TOKEN_OR_ASSIGN },
-		{ "^=", TOKEN_XOR_ASSIGN },
-		{ ">>", TOKEN_SHR },
-		{ "<<", TOKEN_SHL },
+		{ "==", TOKEN_EQUAL, 7 },
+		{ "!=", TOKEN_NOT_EQUAL, 7 },
+		{ ">=", TOKEN_GTE, 6 },
+		{ "<=", TOKEN_LTE, 6 },
+		{ "+=", TOKEN_ADD_ASSIGN, 14 },
+		{ "-=", TOKEN_SUB_ASSIGN, 14 },
+		{ "++", TOKEN_INC, 1 },
+		{ "--", TOKEN_DEC, 1 },
+		{ "*=", TOKEN_MUL_ASSIGN, 14 },
+		{ "%=", TOKEN_MOD_ASSIGN, 14 },
+		{ "/=", TOKEN_DIV_ASSIGN, 14 },
+		{ "&=", TOKEN_AND_ASSIGN, 14 },
+		{ "|=", TOKEN_OR_ASSIGN, 14 },
+		{ "^=", TOKEN_XOR_ASSIGN, 14 },
+		{ "&&", TOKEN_LOGICAL_AND, 11 },
+		{ "||", TOKEN_LOGICAL_OR, 12 },
+		{ ">>", TOKEN_SHR, 5 },
+		{ "<<", TOKEN_SHL, 5 },
 
 		{ ";", TOKEN_SEMICOLON },
-		{ ",", TOKEN_COMMA },
-		{ "(", TOKEN_PAREN_OPEN },
-		{ ")", TOKEN_PAREN_CLOSE },
+		{ ",", TOKEN_COMMA, 15 },
+		{ "(", TOKEN_PAREN_OPEN, 1 },
+		{ ")", TOKEN_PAREN_CLOSE, 1 },
 		{ "{", TOKEN_BRACKET_OPEN },
 		{ "}", TOKEN_BRACKET_CLOSE },
-		{ "[", TOKEN_BRACE_OPEN },
-		{ "]", TOKEN_BRACE_CLOSE },
-		{ "+", TOKEN_ADD },
-		{ "-", TOKEN_SUB },
-		{ "*", TOKEN_MUL },
-		{ "%", TOKEN_MOD },
-		{ "/", TOKEN_DIV },
-		{ "&", TOKEN_AND },
-		{ "|", TOKEN_OR },
-		{ "^", TOKEN_XOR },
-		{ "!", TOKEN_NOT },
-		{ "=", TOKEN_ASSIGN },
-		{ ">", TOKEN_GT },
-		{ "<", TOKEN_LT },
+		{ "[", TOKEN_BRACE_OPEN, 1 },
+		{ "]", TOKEN_BRACE_CLOSE, 1 },
+		{ "+", TOKEN_ADD, 4 },
+		{ "-", TOKEN_SUB, 4 },
+		{ "*", TOKEN_MUL, 3 },
+		{ "%", TOKEN_MOD, 3 },
+		{ "/", TOKEN_DIV, 3 },
+		{ "&", TOKEN_AND, 8 },
+		{ "|", TOKEN_OR, 10 },
+		{ "^", TOKEN_XOR, 9 },
+		{ "!", TOKEN_NOT, 2 },
+		{ "=", TOKEN_ASSIGN, 14 },
+		{ ">", TOKEN_GT, 6 },
+		{ "<", TOKEN_LT, 6 },
 	};
 
 	namespace regex
@@ -214,7 +228,9 @@ namespace kpp
 		case TOKEN_SHR:					return "TOKEN_SHR";
 		case TOKEN_SHL:					return "TOKEN_SHL";
 		case TOKEN_AND:					return "TOKEN_AND";
+		case TOKEN_LOGICAL_AND:			return "TOKEN_LOGICAL_AND";
 		case TOKEN_OR:					return "TOKEN_OR";
+		case TOKEN_LOGICAL_OR:			return "TOKEN_LOGICAL_OR";
 		case TOKEN_XOR:					return "TOKEN_XOR";
 		case TOKEN_NOT:					return "TOKEN_NOT";
 		case TOKEN_ASSIGN:				return "TOKEN_ASSIGN";
@@ -266,23 +282,25 @@ namespace kpp
 		std::optional<token_info> eat_expect(Token expected_token);
 		std::optional<token_info> eat_expect_keyword_declaration();
 
+		void print_list();
 		void push_and_pop_token(const token_info& token);
 
 		bool is_token_keyword(const token_info& token);
 		bool is_token_keyword_type(const token_info& token);
 
-		bool is_token_keyword_type()			{ return is_token_keyword_type(current()); }
-		bool is_current(Token id)				{ return (current_token() == id); }
-		bool eof()								{ return tokens.empty(); }
+		bool is_token_keyword_type()					{ return is_token_keyword_type(current()); }
+		bool is_current(Token id)						{ return (current_token() == id); }
+		bool is(const token_info& token, Token id)		{ return (token.id == id); }
+		bool eof()										{ return tokens.empty(); }
 
-		token_info token(int i) const			{ return tokens[i]; }
+		token_info token(int i) const					{ return tokens[i]; }
 
-		token_info current() const				{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens.back()); }
+		token_info current() const						{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens.back()); }
 
-		Token current_token() const				{ return (tokens.empty() ? TOKEN_EOF : tokens.back().id); }
+		Token current_token() const						{ return (tokens.empty() ? TOKEN_EOF : tokens.back().id); }
 		
-		std::string current_value() const		{ return (tokens.empty() ? std::string {} : tokens.back().value); }
+		std::string current_value() const				{ return (tokens.empty() ? std::string {} : tokens.back().value); }
 
-		const size_t get_tokens_count() const	{ return tokens.size(); }
+		const size_t get_tokens_count() const			{ return tokens.size(); }
 	};
 }

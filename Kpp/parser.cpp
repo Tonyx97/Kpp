@@ -6,57 +6,6 @@
 
 using namespace kpp;
 
-void ast::Printer::print_body(ast::StmtBody* body)
-{
-	++curr_level;
-
-	PRINT_TABS_NL(C_CYAN, curr_level, "Body");
-
-	for (auto&& stmt_base : body->stmts)
-	{
-		if (stmt_base->is_body)
-		{
-			print_body((ast::StmtBody*)stmt_base);
-		}
-		else
-		{
-			auto stmt = (ast::Stmt*)stmt_base;
-			PRINT_TABS_NL(C_YELLOW, curr_level + 1, "Statement '%s' (%s)", stmt->name.c_str(), STRINGIFY_TOKEN(stmt->type).c_str());
-		}
-	}
-
-	PRINT_TABS_NL(C_CYAN, curr_level, "End");
-
-	--curr_level;
-}
-
-void ast::Printer::print_prototype(ast::Prototype* prototype)
-{
-	if (!prototype->body)
-		return;
-
-	PRINT_TABS(C_WHITE, 0, "Prototype '%s'", prototype->name.c_str());
-
-	if (!prototype->stmts.empty())
-	{
-		PRINT_TABS(C_WHITE, 0, " | Arguments: ");
-
-		dbg::print_str_vec(C_GREEN, prototype->stmts, ", ", [](ast::StmtBase* stmt_base) { return ((ast::StmtDecl*)stmt_base)->name; });
-	}
-
-	PRINT_NL;
-
-	print_body(prototype->body);
-
-	PRINT_TABS_NL(C_WHITE, curr_level, "End\n");
-}
-
-void ast::Printer::print(const std::vector<ast::Prototype*>& prototypes)
-{
-	for (auto&& prototype : prototypes)
-		print_prototype(prototype);
-}
-
 parser::~parser()
 {
 	// we need to free the whole ast tree lol
@@ -86,25 +35,9 @@ ast::Prototype* parser::parse_prototype()
 		{
 			if (auto paren_open = lex.eat_expect(TOKEN_PAREN_OPEN))
 			{
-				auto prototype = new ast::Prototype(id->value);
+				auto prototype = ast::Prototype::create(id->value);
 
-				while (!lex.eof())
-				{
-					auto param_type = parse_type();
-					if (!param_type)
-						break;
-
-					auto param_id = parse_id();
-					if (!param_id)
-						break;
-
-					prototype->stmts.push_back(ast::StmtDecl::create(param_id->value, param_type->id));
-
-					if (!lex.is_current(TOKEN_COMMA))
-						break;
-
-					lex.eat();
-				}
+				prototype->stmts = parse_prototype_params_decl();
 
 				if (auto paren_close = lex.eat_expect(TOKEN_PAREN_CLOSE))
 				{
@@ -112,6 +45,8 @@ ast::Prototype* parser::parse_prototype()
 						return prototype;
 					else printf_s("Failed parsing main prototype body\n");
 				}
+
+				delete prototype;
 			}
 		}
 		else printf_s("[%s] SYNTAX ERROR: Expected function id\n", __FUNCTION__);
@@ -119,6 +54,31 @@ ast::Prototype* parser::parse_prototype()
 	else printf_s("[%s] SYNTAX ERROR: Expected a return type\n", __FUNCTION__);
 
 	return nullptr;
+}
+
+std::vector<ast::StmtBase*> parser::parse_prototype_params_decl()
+{
+	std::vector<ast::StmtBase*> stmts;
+
+	while (!lex.eof())
+	{
+		auto param_type = parse_type();
+		if (!param_type)
+			break;
+
+		auto param_id = parse_id();
+		if (!param_id)
+			break;
+
+		stmts.push_back(ast::StmtDecl::create(param_id->value, param_type->id));
+
+		if (!lex.is_current(TOKEN_COMMA))
+			break;
+
+		lex.eat();
+	}
+
+	return stmts;
 }
 
 ast::StmtBody* parser::parse_body(ast::StmtBody* body)
@@ -136,7 +96,12 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 			curr_body->stmts.push_back(new_body);
 
 		if (auto stmt = parse_statement())
+		{
 			curr_body->stmts.push_back(stmt);
+
+			if (lex.is_current(TOKEN_SEMICOLON))
+				lex.eat();
+		}
 		else break;
 	}
 
@@ -148,7 +113,7 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 	return nullptr;
 }
 
-ast::Stmt* parser::parse_statement()
+ast::StmtBase* parser::parse_statement()
 {
 	if (auto type = parse_type())
 	{
@@ -160,18 +125,12 @@ ast::Stmt* parser::parse_statement()
 			{
 			case TOKEN_ASSIGN:
 			{
-				printf_s("declaration with assignment\n");
-				parse_expression();
-				return nullptr;
-			}
-			case TOKEN_SEMICOLON:
-			{
 				lex.eat();
-				break;
+				return ast::StmtAssign::create(id->value, parse_expression());
 			}
 			}
 
-			return ast::Stmt::create(id->value, type->id);
+			return ast::StmtDecl::create(id->value, type->id);
 		}
 		else printf_s("[%s] SYNTAX ERROR: Expected an identifier\n", __FUNCTION__);
 	}
@@ -181,7 +140,64 @@ ast::Stmt* parser::parse_statement()
 
 ast::Expr* parser::parse_expression()
 {
-	printf_s("parsing expression now...\n");
+	return parse_expression_precedence(parse_primary_expression());
+}
+
+ast::Expr* parser::parse_expression_precedence(ast::Expr* lhs, int min_precedence)
+{
+	if (!lhs)
+		return nullptr;
+
+	auto lookahead = lex.current();
+
+	while (lookahead.precedence <= min_precedence)
+	{
+		auto op = lookahead;
+
+		lex.eat();
+
+		auto rhs = parse_primary_expression();
+		if (!rhs)
+			break;
+
+		lookahead = lex.current();
+
+		// no right associative operators yet
+
+		while (lookahead.precedence < op.precedence)
+		{
+			rhs = parse_expression_precedence(rhs, lookahead.precedence);
+			lookahead = lex.current();
+		}
+
+		lhs = ast::BinaryOp::create(lhs, op.id, rhs);
+	}
+
+	return lhs;
+}
+
+ast::Expr* parser::parse_primary_expression()
+{
+	if (auto curr = lex.current(); lex.is(curr, TOKEN_INT_LITERAL))
+	{
+		lex.eat();
+
+		return ast::Expr::create(curr.value);
+	}
+	else if (lex.is(curr, TOKEN_ID))
+	{
+		lex.eat();
+
+		if (lex.is_current(TOKEN_PAREN_OPEN))
+		{
+			lex.eat();
+
+			lex.eat_expect(TOKEN_PAREN_CLOSE);
+		}
+
+		return ast::Expr::create(curr.value);
+	}
+
 	return nullptr;
 }
 

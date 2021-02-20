@@ -82,17 +82,19 @@ bool lexer::parse(const std::string& filename)
 
 			std::smatch sm;
 
-			if (std::regex_search(line, sm, regex::SINGLE_COMMENT))
+			if (std::regex_search(line, sm, regex::SINGLE_COMMENT) &&
+				line.find(sm.str()) == 0)
 				break;
 
 			token_info curr_token {};
 			
-			for (auto&& [token, id] : static_tokens)
+			for (auto&& [token, id, precedence] : static_tokens)
 			{
 				if (!line.compare(0, token.length(), token))
 				{
 					curr_token.value = token;
 					curr_token.id = id;
+					curr_token.precedence = precedence;
 					break;
 				}
 			}
@@ -112,9 +114,9 @@ bool lexer::parse(const std::string& filename)
 							case TOKEN_ID:
 							{
 								if (auto it = keywords.find(token_found); it != keywords.end())
-									curr_token.id = it->second.id;
+									curr_token.id = it->second;
 								else if (auto it_decl = keywords_type.find(token_found); it_decl != keywords_type.end())
-									curr_token.id = it_decl->second.id;
+									curr_token.id = it_decl->second;
 								else curr_token.id = token_type;
 
 								break;
@@ -132,6 +134,9 @@ bool lexer::parse(const std::string& filename)
 
 					return false;
 				};
+
+				// check if this token is a keyword, a keyword type or an identifier
+				// if it's not either, we check if it's a literal
 
 				if (!check_token_regex(regex::WORD, TOKEN_ID))
 					check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL);
@@ -159,13 +164,6 @@ bool lexer::parse(const std::string& filename)
 		}
 
 		++line_num;
-	}
-
-	for (auto&& token : tokens)
-	{
-		PRINT_ALIGN(C_YELLOW, 15, "'%s'", token.value.c_str());
-		PRINT_ALIGN(C_YELLOW, 15, "->");
-		PRINT(C_YELLOW, "type: %s", STRINGIFY_TOKEN(token.id).c_str());
 	}
 
 	std::reverse(tokens.begin(), tokens.end());
@@ -219,6 +217,16 @@ token_info lexer::eat()
 	push_and_pop_token(curr);
 
 	return curr;
+}
+
+void lexer::print_list()
+{
+	for (auto&& token : tokens)
+	{
+		PRINT_ALIGN(C_YELLOW, 15, "'%s'", token.value.c_str());
+		PRINT_ALIGN(C_YELLOW, 15, "->");
+		PRINT(C_YELLOW, "type: %s", STRINGIFY_TOKEN(token.id).c_str());
+	}
 }
 
 void lexer::push_and_pop_token(const token_info& token)

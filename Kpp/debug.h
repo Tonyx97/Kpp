@@ -5,6 +5,8 @@
 
 #include <Windows.h>
 
+#include "defs.h"
+
 enum eColor : unsigned short
 {
 	C_BLACK = 0x0,
@@ -152,16 +154,37 @@ namespace dbg
 		std::cout << format(txt, args...) << std::endl;
 	}
 
-	template <typename T, typename F>
-	static inline void print_str_vec(eColor color, const std::vector<T>& vec, const std::string& separator, const F& fn)
+	template <typename Tx, typename T, typename F>
+	static inline void print_vec(eColor color, const std::vector<T>& vec, const std::string& separator, const F& fn)
 	{
 		for (int i = 0; i < vec.size() - 1; ++i)
-			dbg::make_text(color, "%s%s", fn(vec[i]).c_str(), separator.c_str()).print();
+			dbg::make_text(color, "%s%s", fn(static_cast<Tx*>(vec[i])).c_str(), separator.c_str()).print();
 
-		dbg::make_text(color, "%s", fn(vec.back()).c_str()).print();
+		dbg::make_text(color, "%s", fn(static_cast<Tx*>(vec.back())).c_str()).print();
 	}
+
+	struct TimeProfiling
+	{
+		std::chrono::high_resolution_clock::time_point m_start;
+		uint64_t cycles = 0;
+		std::string name;
+
+		TimeProfiling(const std::string& name) : name(name)
+		{
+			m_start = std::chrono::high_resolution_clock::now();
+			cycles = __rdtsc();
+		}
+
+		~TimeProfiling()
+		{
+			const auto cycles_passed = __rdtsc() - cycles;
+			const auto time_passed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_start).count();
+			dbg::make_text_nl(C_YELLOW, "%s: %.3f ms | %i mcs | %i cycles", name.c_str(), static_cast<double>(time_passed) / 1000.f, time_passed, cycles_passed).print();
+		}
+	};
 };
 
+#define PROFILE(x)						dbg::TimeProfiling p(x)
 #define EMPTY_NEW_LINE					C_WHITE, "\n"
 #define PRINT_NNL(x, y, ...)			dbg::make_text(x, y, __VA_ARGS__).print()
 #define PRINT(x, y, ...)				dbg::make_text_nl(x, y, __VA_ARGS__).print()

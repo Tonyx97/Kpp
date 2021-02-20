@@ -6,26 +6,34 @@
 
 int main()
 {
-	PRINT(C_WHITE, "---------- LEXER ----------");
+	PRINT(C_WHITE, "---------- LEXER ----------\n");
 
 	kpp::lexer lexer;
 
 	kpp::err_lexer = &lexer;
 
-	lexer.parse("test.kpp");
+	{
+		PROFILE("Lexer Time");
+		lexer.parse("test.kpp");
+	}
 
-	PRINT(C_WHITE, "---------- PARSER ----------");
+	lexer.print_list();
+
+	PRINT(C_WHITE, "\n---------- PARSER ----------\n");
 
 	kpp::parser parser(lexer);
 
-	parser.parse();
+	{
+		PROFILE("Parser Time");
+		parser.parse();
+	}
 
-	PRINT(C_WHITE, "---------- AST ----------");
+	PRINT(C_WHITE, "\n---------- AST ----------\n");
 
 	parser.print_ast();
 
-	PRINT(C_WHITE, "---------- IR ----------");
-	PRINT(C_WHITE, "---------- ASM ----------");
+	PRINT(C_WHITE, "\n---------- IR ----------\n");
+	PRINT(C_WHITE, "\n---------- ASM ----------\n");
 	
 	return std::cin.get();
 }
