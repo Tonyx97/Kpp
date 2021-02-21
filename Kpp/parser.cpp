@@ -115,24 +115,86 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 
 ast::StmtBase* parser::parse_statement()
 {
-	if (auto type = parse_type())
+	if (lex.is_current(TOKEN_ID))
 	{
 		if (auto id = parse_id())
 		{
 			auto next = lex.current();
+
+			auto type = lex.eaten_token(1);
 
 			switch (next.id)
 			{
 			case TOKEN_ASSIGN:
 			{
 				lex.eat();
-				return ast::StmtAssign::create(id->value, parse_expression());
+				return ast::StmtAssign::create(id->value, parse_expression(), lex.is_token_keyword_type(type) ? type.id : TOKEN_ASSIGN);
+			}
+			case TOKEN_ADD_ASSIGN:
+			{
+				lex.eat();
+				return ast::StmtAssign::create(id->value, parse_expression(), lex.is_token_keyword_type(type) ? type.id : TOKEN_ADD_ASSIGN);
 			}
 			}
 
-			return ast::StmtDecl::create(id->value, type->id);
+			return ast::StmtDecl::create(id->value, type.id);
 		}
 		else printf_s("[%s] SYNTAX ERROR: Expected an identifier\n", __FUNCTION__);
+	}
+	else if (auto type = parse_type())
+		return parse_statement();
+	else if (type = parse_keyword())
+	{
+		if (lex.is(*type, TOKEN_IF))
+		{
+			lex.eat_expect(TOKEN_PAREN_OPEN);
+
+			auto if_expr = parse_expression();
+
+			lex.eat_expect(TOKEN_PAREN_CLOSE);
+
+			auto if_stmt = ast::StmtIf::create(if_expr, parse_body(nullptr));
+
+			if (lex.is_current(TOKEN_ELSE))
+			{
+				if (lex.is_next(TOKEN_IF))
+				{
+					do
+					{
+						lex.eat();
+						lex.eat();
+
+						lex.eat_expect(TOKEN_PAREN_OPEN);
+
+						auto else_if_expr = parse_expression();
+
+						lex.eat_expect(TOKEN_PAREN_CLOSE);
+
+						if_stmt->ifs.push_back(ast::StmtIf::create(else_if_expr, parse_body(nullptr)));
+
+					} while (!lex.eof() && lex.is_current(TOKEN_ELSE) && lex.is_next(TOKEN_IF));
+				}
+
+				if (lex.is_current(TOKEN_ELSE))
+				{
+					lex.eat();
+
+					if_stmt->else_body = parse_body(nullptr);
+				}
+			}
+
+			return if_stmt;
+		}
+		else if (lex.is(*type, TOKEN_FOR))
+		{
+			lex.eat_expect(TOKEN_PAREN_OPEN);
+
+			auto init		= lex.is_current(TOKEN_SEMICOLON) ? nullptr : parse_statement();	lex.eat_expect(TOKEN_SEMICOLON);
+			auto condition	= lex.is_current(TOKEN_SEMICOLON) ? nullptr : parse_expression();	lex.eat_expect(TOKEN_SEMICOLON);
+			auto step		= lex.is_current(TOKEN_PAREN_CLOSE) ? nullptr : parse_statement();	lex.eat_expect(TOKEN_PAREN_CLOSE);
+
+			return ast::StmtFor::create(condition, init, step, parse_body(nullptr));
+		}
 	}
 	
 	return nullptr;
@@ -150,21 +212,19 @@ ast::Expr* parser::parse_expression_precedence(ast::Expr* lhs, int min_precedenc
 
 	auto lookahead = lex.current();
 
-	while (lookahead.precedence <= min_precedence)
+	while (lex.is_token_operator(lookahead) && lookahead.precedence <= min_precedence)
 	{
 		auto op = lookahead;
 
 		lex.eat();
 
 		auto rhs = parse_primary_expression();
-		if (!rhs)
-			break;
 
 		lookahead = lex.current();
 
 		// no right associative operators yet
 
-		while (lookahead.precedence < op.precedence)
+		while (lex.is_token_operator(lookahead) && lookahead.precedence < op.precedence)
 		{
 			rhs = parse_expression_precedence(rhs, lookahead.precedence);
 			lookahead = lex.current();
@@ -204,6 +264,11 @@ ast::Expr* parser::parse_primary_expression()
 opt_token_info parser::parse_type()
 {
 	return (lex.is_token_keyword_type() ? lex.eat() : opt_token_info {});
+}
+
+opt_token_info parser::parse_keyword()
+{
+	return (lex.is_token_keyword() ? lex.eat() : opt_token_info {});
 }
 
 opt_token_info parser::parse_id()

@@ -18,6 +18,7 @@
 #include <set>
 #include <list>
 #include <any>
+#include <stack>
 #include <optional>
 
 #include "debug.h"

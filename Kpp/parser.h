@@ -29,6 +29,7 @@ namespace kpp
 		ast::Expr* parse_expression_precedence(ast::Expr* lhs, int min_precedence = LOWEST_PRECEDENCE);
 		ast::Expr* parse_primary_expression();
 		opt_token_info parse_type();
+		opt_token_info parse_keyword();
 		opt_token_info parse_id();
 
 	};

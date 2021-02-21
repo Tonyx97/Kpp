@@ -91,6 +91,8 @@ namespace kpp
 
 		int precedence = LOWEST_PRECEDENCE;
 
+		bool is_operator = false;
+
 		template <typename T>
 		T get()
 		{
@@ -102,7 +104,7 @@ namespace kpp
 			return T {};
 		}
 
-		operator bool() { return (id != TOKEN_NONE); }
+		operator bool() { return (id != TOKEN_NONE && id != TOKEN_EOF); }
 	};
 
 	inline std::unordered_map<std::string, Token> keywords =
@@ -114,7 +116,7 @@ namespace kpp
 		{ "break",		TOKEN_BREAK },
 		{ "continue",	TOKEN_CONTINUE },
 		{ "return",		TOKEN_RETURN },
-		{ "extern",		TOKEN_EXTERN },
+		{ "extern",		TOKEN_EXTERN },		// not an statement but we put it here for now
 	};
 	
 	inline std::unordered_map<std::string, Token> keywords_type =
@@ -136,49 +138,51 @@ namespace kpp
 
 	inline token_info static_tokens[] =
 	{
-		{ ">>=", TOKEN_SHR_ASSIGN, 14 },
-		{ "<<=", TOKEN_SHL_ASSIGN, 14 },
+		{ ">>=", TOKEN_SHR_ASSIGN, 14, true },
+		{ "<<=", TOKEN_SHL_ASSIGN, 14, true },
 
-		{ "==", TOKEN_EQUAL, 7 },
-		{ "!=", TOKEN_NOT_EQUAL, 7 },
-		{ ">=", TOKEN_GTE, 6 },
-		{ "<=", TOKEN_LTE, 6 },
-		{ "+=", TOKEN_ADD_ASSIGN, 14 },
-		{ "-=", TOKEN_SUB_ASSIGN, 14 },
-		{ "++", TOKEN_INC, 1 },
-		{ "--", TOKEN_DEC, 1 },
-		{ "*=", TOKEN_MUL_ASSIGN, 14 },
-		{ "%=", TOKEN_MOD_ASSIGN, 14 },
-		{ "/=", TOKEN_DIV_ASSIGN, 14 },
-		{ "&=", TOKEN_AND_ASSIGN, 14 },
-		{ "|=", TOKEN_OR_ASSIGN, 14 },
-		{ "^=", TOKEN_XOR_ASSIGN, 14 },
-		{ "&&", TOKEN_LOGICAL_AND, 11 },
-		{ "||", TOKEN_LOGICAL_OR, 12 },
-		{ ">>", TOKEN_SHR, 5 },
-		{ "<<", TOKEN_SHL, 5 },
+		{ "==", TOKEN_EQUAL, 7, true },
+		{ "!=", TOKEN_NOT_EQUAL, 7, true },
+		{ ">=", TOKEN_GTE, 6, true },
+		{ "<=", TOKEN_LTE, 6, true },
+		{ "+=", TOKEN_ADD_ASSIGN, 14, true },
+		{ "-=", TOKEN_SUB_ASSIGN, 14, true },
+		{ "++", TOKEN_INC, 1, true },
+		{ "--", TOKEN_DEC, 1, true },
+		{ "*=", TOKEN_MUL_ASSIGN, 14, true },
+		{ "%=", TOKEN_MOD_ASSIGN, 14, true },
+		{ "/=", TOKEN_DIV_ASSIGN, 14, true },
+		{ "&=", TOKEN_AND_ASSIGN, 14, true },
+		{ "|=", TOKEN_OR_ASSIGN, 14, true },
+		{ "^=", TOKEN_XOR_ASSIGN, 14, true },
+		{ "&&", TOKEN_LOGICAL_AND, 11, true },
+		{ "||", TOKEN_LOGICAL_OR, 12, true },
+		{ ">>", TOKEN_SHR, 5, true },
+		{ "<<", TOKEN_SHL, 5, true },
 
 		{ ";", TOKEN_SEMICOLON },
-		{ ",", TOKEN_COMMA, 15 },
+		{ ",", TOKEN_COMMA, 15, true },
 		{ "(", TOKEN_PAREN_OPEN, 1 },
 		{ ")", TOKEN_PAREN_CLOSE, 1 },
 		{ "{", TOKEN_BRACKET_OPEN },
 		{ "}", TOKEN_BRACKET_CLOSE },
-		{ "[", TOKEN_BRACE_OPEN, 1 },
-		{ "]", TOKEN_BRACE_CLOSE, 1 },
-		{ "+", TOKEN_ADD, 4 },
-		{ "-", TOKEN_SUB, 4 },
-		{ "*", TOKEN_MUL, 3 },
-		{ "%", TOKEN_MOD, 3 },
-		{ "/", TOKEN_DIV, 3 },
-		{ "&", TOKEN_AND, 8 },
-		{ "|", TOKEN_OR, 10 },
-		{ "^", TOKEN_XOR, 9 },
-		{ "!", TOKEN_NOT, 2 },
-		{ "=", TOKEN_ASSIGN, 14 },
-		{ ">", TOKEN_GT, 6 },
-		{ "<", TOKEN_LT, 6 },
+		{ "[", TOKEN_BRACE_OPEN, 1, true },
+		{ "]", TOKEN_BRACE_CLOSE, 1, true },
+		{ "+", TOKEN_ADD, 4, true },
+		{ "-", TOKEN_SUB, 4, true },
+		{ "*", TOKEN_MUL, 3, true },
+		{ "%", TOKEN_MOD, 3, true },
+		{ "/", TOKEN_DIV, 3, true },
+		{ "&", TOKEN_AND, 8, true },
+		{ "|", TOKEN_OR, 10, true },
+		{ "^", TOKEN_XOR, 9, true },
+		{ "!", TOKEN_NOT, 2, true },
+		{ "=", TOKEN_ASSIGN, 14, true },
+		{ ">", TOKEN_GT, 6, true },
+		{ "<", TOKEN_LT, 6, true },
 	};
+
+	inline std::unordered_map<std::string, token_info> static_tokens_map;
 
 	namespace regex
 	{
@@ -285,19 +289,25 @@ namespace kpp
 		void print_list();
 		void push_and_pop_token(const token_info& token);
 
+		bool is_token_operator(const token_info& token);
 		bool is_token_keyword(const token_info& token);
 		bool is_token_keyword_type(const token_info& token);
-
+		
+		bool is_token_operator()						{ return is_token_operator(current()); }
+		bool is_token_keyword()							{ return is_token_keyword(current()); }
 		bool is_token_keyword_type()					{ return is_token_keyword_type(current()); }
 		bool is_current(Token id)						{ return (current_token() == id); }
+		bool is_next(Token id)							{ return (next_token() == id); }
 		bool is(const token_info& token, Token id)		{ return (token.id == id); }
 		bool eof()										{ return tokens.empty(); }
 
-		token_info token(int i) const					{ return tokens[i]; }
+		token_info token(int i) const					{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens[i]); }
+		token_info eaten_token(int i) const				{ return (eaten_tokens.empty() ? token_info { "eof", TOKEN_EOF } : *(eaten_tokens.rbegin() + i)); }
 
 		token_info current() const						{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens.back()); }
 
 		Token current_token() const						{ return (tokens.empty() ? TOKEN_EOF : tokens.back().id); }
+		Token next_token() const						{ return (tokens.size() < 2 ? TOKEN_EOF : (tokens.rbegin() + 1)->id); }
 		
 		std::string current_value() const				{ return (tokens.empty() ? std::string {} : tokens.back().value); }
 

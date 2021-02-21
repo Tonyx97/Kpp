@@ -40,6 +40,11 @@ bool lexer::parse(const std::string& filename)
 		remove_spaces();
 	};
 
+	// populate static tokens map
+
+	for (const auto& token : static_tokens)
+		static_tokens_map.insert({ token.value, token });
+
 	int line_num = 1;
 
 	bool multiline_comment = false;
@@ -88,13 +93,11 @@ bool lexer::parse(const std::string& filename)
 
 			token_info curr_token {};
 			
-			for (auto&& [token, id, precedence] : static_tokens)
+			for (const auto& token : static_tokens)
 			{
-				if (!line.compare(0, token.length(), token))
+				if (!line.compare(0, token.value.length(), token.value))
 				{
-					curr_token.value = token;
-					curr_token.id = id;
-					curr_token.precedence = precedence;
+					curr_token = token;
 					break;
 				}
 			}
@@ -233,6 +236,12 @@ void lexer::push_and_pop_token(const token_info& token)
 {
 	eaten_tokens.push_back(token);
 	tokens.pop_back();
+}
+
+bool lexer::is_token_operator(const token_info& token)
+{
+	auto it = static_tokens_map.find(token.value);
+	return (it != static_tokens_map.end() ? it->second.is_operator : false);
 }
 
 bool lexer::is_token_keyword(const token_info& token)
