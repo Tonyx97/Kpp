@@ -23,3 +23,10 @@ void kpp::parser_error(const char* str)
 
 	critical_error();
 }
+
+void kpp::semantic_error(const char* str)
+{
+	PRINT(C_RED, "SEMANTIC ERROR: %s", str);
+
+	critical_error();
+}

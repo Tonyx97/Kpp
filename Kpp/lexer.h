@@ -161,7 +161,7 @@ namespace kpp
 		{ "<<", TOKEN_SHL, 5, true },
 
 		{ ";", TOKEN_SEMICOLON },
-		{ ",", TOKEN_COMMA, 15, true },
+		{ ",", TOKEN_COMMA, 15 },
 		{ "(", TOKEN_PAREN_OPEN, 1 },
 		{ ")", TOKEN_PAREN_CLOSE, 1 },
 		{ "{", TOKEN_BRACKET_OPEN },
@@ -267,6 +267,12 @@ namespace kpp
 		return "TOKEN_NONE";
 	}
 
+	inline std::string STRINGIFY_TYPE(Token id)
+	{
+		auto it = std::find_if(keywords_type.begin(), keywords_type.end(), [&](const auto& p) { return p.second == id; });
+		return (it != keywords_type.end() ? it->first : "unknown_type");
+	}
+
 	class lexer
 	{
 	private:
@@ -288,6 +294,7 @@ namespace kpp
 
 		void print_list();
 		void push_and_pop_token(const token_info& token);
+		void restore_last_eaten_token();
 
 		bool is_token_operator(const token_info& token);
 		bool is_token_keyword(const token_info& token);

@@ -30,6 +30,12 @@
     <ClCompile Include="ast.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="configs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ir.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h">
@@ -48,6 +54,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="configs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ir.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

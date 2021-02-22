@@ -234,8 +234,20 @@ void lexer::print_list()
 
 void lexer::push_and_pop_token(const token_info& token)
 {
+	if (tokens.empty())
+		return;
+
 	eaten_tokens.push_back(token);
 	tokens.pop_back();
+}
+
+void lexer::restore_last_eaten_token()
+{
+	if (eaten_tokens.empty())
+		return;
+
+	tokens.push_back(eaten_tokens.back());
+	eaten_tokens.pop_back();
 }
 
 bool lexer::is_token_operator(const token_info& token)

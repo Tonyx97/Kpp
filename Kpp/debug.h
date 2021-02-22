@@ -157,6 +157,9 @@ namespace dbg
 	template <typename Tx, typename T, typename F>
 	static inline void print_vec(eColor color, const std::vector<T>& vec, const std::string& separator, const F& fn)
 	{
+		if (vec.empty())
+			return;
+
 		for (int i = 0; i < vec.size() - 1; ++i)
 			dbg::make_text(color, "%s%s", fn(static_cast<Tx*>(vec[i])).c_str(), separator.c_str()).print();
 

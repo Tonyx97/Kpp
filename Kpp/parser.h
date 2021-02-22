@@ -10,19 +10,22 @@ namespace kpp
 
 		lexer& lex;
 
-		std::vector<ast::Prototype*> prototypes;
+		ast::AST* tree = nullptr;
 
 	public:
 
-		parser(lexer& lex) : lex(lex) {}
+		parser(lexer& lex);
 		~parser();
 
 		void print_ast();
 
 		bool parse();
 
+		ast::AST* get_ast() { return tree; }
+
 		ast::Prototype* parse_prototype();
 		std::vector<ast::StmtBase*> parse_prototype_params_decl();
+		std::vector<ast::Expr*> parse_call_params();
 		ast::StmtBody* parse_body(ast::StmtBody* body);
 		ast::StmtBase* parse_statement();
 		ast::Expr* parse_expression();

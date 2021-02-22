@@ -1,12 +1,13 @@
 #include <defs.h>
 
+#include "err_handler.h"
 #include "lexer.h"
 #include "parser.h"
-#include "err_handler.h"
+#include "ir.h"
 
 int main(int argc, char** argv)
 {
-	PRINT(C_WHITE, "---------- LEXER ----------\n");
+	PRINT(C_WHITE, "---------- LEXER (Lexic Analysis) ----------\n");
 
 	kpp::lexer lexer;
 
@@ -22,7 +23,7 @@ int main(int argc, char** argv)
 
 	lexer.print_list();
 
-	PRINT(C_WHITE, "\n---------- PARSER ----------\n");
+	PRINT(C_WHITE, "\n---------- PARSER (Syntax Analysis) ----------\n");
 
 	kpp::parser parser(lexer);
 
@@ -35,8 +36,24 @@ int main(int argc, char** argv)
 
 	parser.print_ast();
 
-	PRINT(C_WHITE, "\n---------- IR ----------\n");
+	PRINT(C_WHITE, "\n---------- IR (Semantic Analysis) ----------\n");
+
+	kpp::ir_parser ir_parser(parser.get_ast());
+
+	{
+		PROFILE("IR Parser Time");
+		ir_parser.generate();
+	}
+
+	PRINT(C_WHITE, "\n---------- IR Code ----------\n");
+
+	ir_parser.print_ir();
+
 	PRINT(C_WHITE, "\n---------- ASM ----------\n");
+
+	{
+		PROFILE("ASM Generation Time");
+	}
 	
 	return std::cin.get();
 }
