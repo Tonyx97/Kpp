@@ -127,13 +127,6 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 			if (lex.is_current(TOKEN_SEMICOLON))
 				lex.eat();
 		}
-		else if (auto expr = parse_expression())
-		{
-			curr_body->stmts.push_back(expr);
-
-			if (lex.is_current(TOKEN_SEMICOLON))
-				lex.eat();
-		}
 		else break;
 	}
 
@@ -205,7 +198,7 @@ ast::StmtBase* parser::parse_statement()
 		else if (lex.is(*type, TOKEN_FOR))
 		{
 			lex.eat_expect(TOKEN_PAREN_OPEN);
-
+			
 			auto init		= lex.is_current(TOKEN_SEMICOLON)	? nullptr : parse_statement();	lex.eat_expect(TOKEN_SEMICOLON);
 			auto condition	= lex.is_current(TOKEN_SEMICOLON)	? nullptr : parse_expression();	lex.eat_expect(TOKEN_SEMICOLON);
 			auto step		= lex.is_current(TOKEN_PAREN_CLOSE) ? nullptr : parse_statement();	lex.eat_expect(TOKEN_PAREN_CLOSE);
@@ -214,7 +207,7 @@ ast::StmtBase* parser::parse_statement()
 		}
 	}
 	
-	return nullptr;
+	return parse_expression();
 }
 
 ast::Expr* parser::parse_expression()

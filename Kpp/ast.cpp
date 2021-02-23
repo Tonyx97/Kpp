@@ -95,16 +95,22 @@ void ast::Printer::print_expr(Expr* expr)
 
 void ast::Printer::print_for(ast::StmtFor* stmt_for)
 {
+	++curr_level;
+
 	PRINT_TABS_NL(C_BLUE, curr_level, "For");
 
 	print_stmt(stmt_for->init);
 	print_expr(stmt_for->condition);
 	print_stmt(stmt_for->step);
 	print_body(stmt_for->body);
+
+	--curr_level;
 }
 
 void ast::Printer::print_if(StmtIf* stmt_if)
 {
+	++curr_level;
+
 	PRINT_TABS_NL(C_BLUE, curr_level, "If");
 
 	print_expr(stmt_if->expr);
@@ -126,12 +132,12 @@ void ast::Printer::print_if(StmtIf* stmt_if)
 
 		print_body(stmt_if->else_body);
 	}
+
+	--curr_level;
 }
 
 void ast::Printer::print_stmt(StmtBase* stmt)
 {
-	++curr_level;
-
 	switch (stmt->stmt_type)
 	{
 	case STMT_BODY:
@@ -147,8 +153,6 @@ void ast::Printer::print_stmt(StmtBase* stmt)
 		print_expr(static_cast<Expr*>(stmt));
 		break;
 	}
-
-	--curr_level;
 }
 
 void ast::Printer::print_body(StmtBody* body)
