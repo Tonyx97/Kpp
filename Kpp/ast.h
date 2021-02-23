@@ -19,7 +19,7 @@ namespace kpp
 		{
 			EXPR_NONE,
 			EXPR_INT,
-			EXPR_ASSIGN,
+			EXPR_DECL_OR_ASSIGN,
 			EXPR_BINARY_OP,
 			EXPR_CALL,
 		};
@@ -35,10 +35,12 @@ namespace kpp
 
 			ExprType expr_type = EXPR_NONE;
 
-			Expr()											{ stmt_type = STMT_EXPR; }
-			Expr(const std::string& value) : value(value)	{ stmt_type = STMT_EXPR; expr_type = EXPR_INT; }
+			Token type = TOKEN_NONE;
 
-			static Expr* create(const std::string& value)	{ return new Expr(value); }
+			Expr()																	{ stmt_type = STMT_EXPR; }
+			Expr(const std::string& value, Token type) : value(value), type(type)	{ stmt_type = STMT_EXPR; expr_type = EXPR_INT; }	// this could be any literal pls
+
+			static Expr* create(const std::string& value, Token type)				{ return new Expr(value, type); }
 		};
 
 		struct StmtBody : public StmtBase
@@ -87,7 +89,9 @@ namespace kpp
 
 			Token type = TOKEN_NONE;
 
-			ExprDeclOrAssign(const std::string& name, Expr* value, Token type) : name(name), value(value), type(type)	{ expr_type = EXPR_ASSIGN; }
+			ExprDeclOrAssign(const std::string& name, Expr* value, Token type) : name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; }
+
+			bool is_declaration() const																					{ return (type != TOKEN_NONE); }
 
 			static ExprDeclOrAssign* create(const std::string& name, Expr* value = nullptr, Token type = TOKEN_NONE)	{ return new ExprDeclOrAssign(name, value, type); }
 		};
@@ -116,13 +120,15 @@ namespace kpp
 
 		struct Prototype
 		{
-			std::vector<StmtBase*> stmts;
+			std::vector<StmtBase*> params;
 
 			std::string name;
 
 			StmtBody* body = nullptr;
 
 			Token return_type = TOKEN_NONE;
+
+			bool declaration = false;
 
 			Prototype(const std::string& name) : name(name)		{}
 			
@@ -145,17 +151,17 @@ namespace kpp
 
 			bool first_prototype_printed = false;
 
-			void print_expr_call(ast::ExprCall* expr);
-			void print_expr_binary_op(ast::ExprBinaryOp* expr);
-			void print_expr_int(ast::Expr* expr);
-			void print_assign(ast::ExprDeclOrAssign* assign);
-			void print_expr(ast::Expr* expr);
-			void print_for(ast::StmtFor* stmt_for);
-			void print_if(ast::StmtIf* stmt_if);
-			void print_stmt(ast::StmtBase* stmt);
-			void print_body(ast::StmtBody* body);
-			void print_prototype(Prototype* prototype);
 			void print(AST* tree);
+			void print_prototype(Prototype* prototype);
+			void print_body(ast::StmtBody* body);
+			void print_stmt(ast::StmtBase* stmt);
+			void print_if(ast::StmtIf* stmt_if);
+			void print_for(ast::StmtFor* stmt_for);
+			void print_expr(ast::Expr* expr);
+			void print_decl_or_assign(ast::ExprDeclOrAssign* assign);
+			void print_expr_int(ast::Expr* expr);
+			void print_expr_binary_op(ast::ExprBinaryOp* expr);
+			void print_expr_call(ast::ExprCall* expr);
 		};
 	}
 }

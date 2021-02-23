@@ -40,14 +40,25 @@ ast::Prototype* parser::parse_prototype()
 			{
 				auto prototype = ast::Prototype::create(id->value);
 
-				prototype->stmts = parse_prototype_params_decl();
+				prototype->params = parse_prototype_params_decl();
 				prototype->return_type = return_type->id;
 
 				if (auto paren_close = lex.eat_expect(TOKEN_PAREN_CLOSE))
 				{
-					if (prototype->body = parse_body(nullptr))
+					if (!lex.is_current(TOKEN_SEMICOLON))
+					{
+						if (prototype->body = parse_body(nullptr))
+							return prototype;
+						else printf_s("Failed parsing main prototype body\n");
+					}
+					else
+					{
+						lex.eat();
+
+						prototype->declaration = true;
+
 						return prototype;
-					else printf_s("Failed parsing main prototype body\n");
+					}
 				}
 
 				delete prototype;
@@ -150,7 +161,7 @@ ast::StmtBase* parser::parse_statement()
 				return ast::ExprDeclOrAssign::create(id->value, parse_expression(), type->id);
 			}
 
-			return ast::ExprDeclOrAssign::create(id->value);
+			return ast::ExprDeclOrAssign::create(id->value, nullptr, type->id);
 		}
 		else printf_s("[%s] SYNTAX ERROR: Expected an identifier\n", __FUNCTION__);
 	}
@@ -252,7 +263,7 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		lex.eat();
 
-		return ast::Expr::create(curr.value);
+		return ast::Expr::create(curr.value, TOKEN_I32);
 	}
 	else if (lex.is(curr, TOKEN_ID))
 	{
@@ -277,7 +288,7 @@ ast::Expr* parser::parse_primary_expression()
 			return call;
 		}
 
-		return ast::Expr::create(curr.value);
+		return ast::Expr::create(curr.value, curr.id);
 	}
 
 	return nullptr;

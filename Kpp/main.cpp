@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 
 	ir_parser.print_ir();
 
-	PRINT(C_WHITE, "\n---------- ASM ----------\n");
+	PRINT(C_WHITE, "---------- ASM ----------\n");
 
 	{
 		PROFILE("ASM Generation Time");
