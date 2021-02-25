@@ -263,7 +263,7 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		lex.eat();
 
-		return ast::Expr::create(curr.value, TOKEN_I32);
+		return ast::ExprIntLiteral::create(ast::Int::create(std::stoll(curr.value)), TOKEN_I32);
 	}
 	else if (lex.is(curr, TOKEN_ID))
 	{
@@ -288,7 +288,7 @@ ast::Expr* parser::parse_primary_expression()
 			return call;
 		}
 
-		return ast::Expr::create(curr.value, curr.id);
+		return ast::ExprId::create(curr.value);
 	}
 
 	return nullptr;

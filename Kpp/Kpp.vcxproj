@@ -18,6 +18,7 @@
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="lexer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="semantic.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ast.h" />
@@ -28,6 +29,7 @@
     <ClInclude Include="parser.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lexer.h" />
+    <ClInclude Include="semantic.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -36,6 +36,9 @@
     <ClCompile Include="ir.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="semantic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h">
@@ -60,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ir.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="semantic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

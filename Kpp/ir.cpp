@@ -6,43 +6,82 @@ using namespace kpp;
 
 ir_parser::ir_parser(ast::AST* tree) : tree(tree)
 {
-	ir_info = new ir::IR();
 }
 
 ir_parser::~ir_parser()
 {
-	delete ir_info;
 }
 
 void ir_parser::print_ir()
 {
-	for (auto&& prototype : ir_info->prototypes)
+	for (auto&& prototype : iri.prototypes)
 	{
 		PRINT_NNL(C_WHITE, "%s %s(", STRINGIFY_TYPE(prototype->return_type).c_str(), prototype->name.c_str());
 
-		dbg::print_vec<ir::PrototypeParameter>(C_WHITE, prototype->params, ", ", [](auto stmt)
+		dbg::print_vec<ir::PrototypeParam>(C_WHITE, prototype->params, ", ", [](auto stmt)
 		{
 			return STRINGIFY_TYPE(stmt->type) + " " + stmt->name;
 		});
 
-		if (prototype->declaration)
-			PRINT(C_WHITE, ");");
-		else
+		if (!prototype->body->items.empty())
 		{
-			PRINT(C_WHITE, ")\n{");
+			PRINT(C_WHITE, ")");
 
-			print_body();
-
-			PRINT(C_WHITE, "}");
+			print_body(prototype->body);
 		}
+		else PRINT(C_WHITE, ") {}");
 			
 		PRINT_NL;
 	}
 }
 
-void ir_parser::print_body()
+void ir_parser::print_body(ir::IrBody* body)
 {
+	PRINT_TABS_NL(C_WHITE, print_level, "{");
 
+	++print_level;
+
+	for (auto&& item : body->items)
+	{
+		switch (item->ir_type)
+		{
+		case ir::IR_BODY:
+		{
+			print_body(static_cast<ir::IrBody*>(item));
+			break;
+		}
+		case ir::IR_EXPR:
+		{
+			print_expr(static_cast<ir::IrExpr*>(item));
+			break;
+		}
+		}
+	}
+
+	--print_level;
+
+	PRINT_TABS_NL(C_WHITE, print_level, "}");
+}
+
+void ir_parser::print_expr(ir::IrExpr* expr_base)
+{
+	switch (expr_base->ir_expr_type)
+	{
+	case ir::IR_EXPR_DECL_OR_ASSIGN:
+	{
+		auto expr = static_cast<ir::IrExprDeclOrAssign*>(expr_base);
+
+		PRINT_TABS_NL(C_WHITE, print_level, "%s %s", STRINGIFY_TYPE(expr->type).c_str(), expr->name.c_str());
+
+		break;
+	}
+	}
+}
+
+void ir_parser::add_prototype(ir::Prototype* prototype)
+{
+	gi.prototypes.insert({ prototype->name, prototype });
+	iri.prototypes.push_back(prototype);
 }
 
 bool ir_parser::generate()
@@ -56,150 +95,108 @@ bool ir_parser::generate()
 	return true;
 }
 
-bool ir_parser::is_prototype_declared(const std::string& name)
+ir::Prototype* ir_parser::generate_prototype(ast::Prototype* prototype)
 {
-	auto it = info.decl_prototypes.find(name);
-	return (it != info.decl_prototypes.end());
-}
+	if (auto defined_prototype = get_defined_prototype(prototype))
+		return defined_prototype;
 
-bool ir_parser::is_prototype_defined(const std::string& name)
-{
-	auto it = info.prototypes.find(name);
-	return (it != info.prototypes.end() && !it->second->declaration);
-}
-
-bool ir_parser::is_var_declared(const std::string& name)
-{
-	return (info.vars.find(name) != info.vars.end());
-}
-
-ir::Prototype* ir_parser::get_prototype(const std::string& name)
-{
-	if (auto it = info.decl_prototypes.find(name); it == info.decl_prototypes.end())
-	{
-		it = info.prototypes.find(name);
-		return (it != info.prototypes.end() ? it->second : nullptr);
-	}
-	else return it->second;
-}
-
-void ir_parser::add_var(const std::string& name)
-{
-	info.vars.insert({ name, name });
-}
-
-void ir_parser::add_prototype(ir::Prototype* prototype)
-{
 	if (prototype->declaration)
-		info.decl_prototypes.insert({ prototype->name, prototype });
-	else info.prototypes.insert({ prototype->name, prototype });
+	{
+		if (auto prototype_def = get_prototype_definition(prototype))
+			return generate_prototype(prototype_def);
+		else return nullptr;
+	}
+
+	auto ir_prototype = new ir::Prototype();
+
+	ir_prototype->name = prototype->name;
+	ir_prototype->return_type = prototype->return_type;
+
+	for (auto&& param : prototype->params)
+	{
+		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(param);
+
+		ir_prototype->params.push_back(new ir::PrototypeParam(decl_or_assign->name, decl_or_assign->type));
+	}
+
+	if (prototype->body)
+		ir_prototype->body = generate_body(prototype->body);
+
+	add_prototype(ir_prototype);
+
+	return ir_prototype;
 }
 
-void ir_parser::generate_prototype(ast::Prototype* ast_prototype)
+ir::IrBody* ir_parser::generate_body(ast::StmtBody* body)
 {
-	const bool defined = is_prototype_defined(ast_prototype->name),
-			   declared = is_prototype_declared(ast_prototype->name);
+	auto ir_body = new ir::IrBody();
 
-	if (defined)
-		return semantic_error("Prototype '%s' already has a body", ast_prototype->name.c_str());
-	else if (ast_prototype->declaration && declared)
-		return semantic_error("Prototype '%s' already declared", ast_prototype->name.c_str());
-
-	auto prototype = info.current = new ir::Prototype();
-
-	prototype->name = ast_prototype->name;
-	prototype->return_type = ast_prototype->return_type;
-	prototype->declaration = ast_prototype->declaration;
-
-	for (auto&& ast_param : ast_prototype->params)
+	for (auto&& stmt : body->stmts)
 	{
-		auto ast_param_decl = static_cast<ast::ExprDeclOrAssign*>(ast_param);
-
-		if (std::find_if(prototype->params.begin(), prototype->params.end(), [&](auto param) { return !param->name.compare(ast_param_decl->name); }) != prototype->params.end())
-			return semantic_error("Parameter '%s' already defined in prototype declaration", ast_param_decl->name.c_str());
-
-		auto param = new ir::PrototypeParameter();
-
-		param->name = ast_param_decl->name;
-		param->type = ast_param_decl->type;
-
-		prototype->params.push_back(param);
+		switch (stmt->stmt_type)
+		{
+		case ast::STMT_BODY: ir_body->items.push_back(generate_body(reinterpret_cast<ast::StmtBody*>(stmt))); break;
+		case ast::STMT_EXPR: ir_body->items.push_back(generate_expr(reinterpret_cast<ast::Expr*>(stmt)));	 break;
+		}
 	}
 
-	if (ast_prototype->body)
-		generate_body(ast_prototype->body);
-
-	add_prototype(prototype);
-
-	ir_info->prototypes.push_back(prototype);
+	return ir_body;
 }
 
-void ir_parser::generate_body(ast::StmtBody* ast_body)
+ir::IrExpr* ir_parser::generate_expr(ast::Expr* expr)
 {
-	for (auto&& stmt : ast_body->stmts)
+	switch (expr->expr_type)
 	{
-		if (stmt->stmt_type == ast::STMT_BODY)
-			generate_body(static_cast<ast::StmtBody*>(stmt));
-		else
-		{
-			if (stmt->stmt_type == ast::STMT_EXPR)
-				generate_expr(static_cast<ast::Expr*>(stmt));
-		}
+	case ast::EXPR_DECL_OR_ASSIGN: return generate_expr_decl_or_assign(static_cast<ast::ExprDeclOrAssign*>(expr));
+	//case ir::IR_EXPR_BINARY_OP:
+	//case ir::IR_EXPR_CALL:
 	}
+
+	return nullptr;
 }
 
-void ir_parser::generate_expr(ast::Expr* ast_expr)
+ir::IrExprDeclOrAssign* ir_parser::generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
 {
-	switch (ast_expr->expr_type)
-	{
-	case ast::EXPR_DECL_OR_ASSIGN:
-	{
-		auto expr = static_cast<ast::ExprDeclOrAssign*>(ast_expr);
+	auto expr_decl_or_assign = new ir::IrExprDeclOrAssign();
 
-		const bool declared = is_var_declared(expr->name);
+	expr_decl_or_assign->type = expr->type;
+	expr_decl_or_assign->name = expr->name;
 
-		if (expr->is_declaration())
+	if (expr->value)
+	{
+		auto new_expr = new ir::IrExpr();
+
+		switch (expr->value->expr_type)
 		{
-			if (declared)
-				return semantic_error("Identifier '%s' already declared", expr->name.c_str());
-
-			add_var(expr->name);
+		case ast::EXPR_INT_LITERAL:
+		{
+			auto expr_int = static_cast<ast::Expr*>(expr);
+			break;
 		}
-		else if (!declared)
-			return semantic_error("Identifier '%s' is undefined", expr->name.c_str());
-
-		break;
-	}
-	case ast::EXPR_CALL:
-	{
-		auto expr = static_cast<ast::ExprCall*>(ast_expr);
-
-		const auto& prototype_name = expr->name;
-
-		auto prototype = get_prototype(prototype_name);
-		if (!prototype)
-			return semantic_error("Identifier '%s' not found", prototype_name.c_str());
-
-		const auto original_params_length = prototype->params.size(),
-				   current_params_length = expr->stmts.size();
-
-		if (current_params_length < original_params_length)
-			return semantic_error("Too few arguments in function call '%s'", prototype_name.c_str());
-		else if (current_params_length > original_params_length)
-			return semantic_error("Too many arguments in function call '%s'", prototype_name.c_str());
-		
-		for (size_t i = 0ull; i < expr->stmts.size(); ++i)
-		{
-			const auto& original_param = prototype->params[i];
-			const auto& current_param = expr->stmts[i];
-
-			if (original_param->type != current_param->type)
-				return semantic_error("Argument of type '%s' is incompatible with parameter of type '%s'",
-									  STRINGIFY_TYPE(current_param->type).c_str(),
-									  STRINGIFY_TYPE(original_param->type).c_str());
 		}
 
-		break;
+		expr_decl_or_assign->value = new_expr;
 	}
-	}
+
+	return expr_decl_or_assign;
+}
+
+ir::Prototype* ir_parser::get_defined_prototype(ast::Prototype* prototype)
+{
+	auto it = gi.prototypes.find(prototype->name);
+	return (it != gi.prototypes.end() ? it->second : nullptr);
+}
+
+ast::Prototype* ir_parser::get_prototype_definition(ast::Prototype* prototype_decl)
+{
+	if (!prototype_decl)
+		return nullptr;
+
+	const auto& prototype_decl_name = prototype_decl->name;
+
+	for (auto&& prototype : tree->prototypes)
+		if (!prototype->name.compare(prototype_decl_name) && !prototype->declaration)
+			return prototype;
+
+	return nullptr;
 }

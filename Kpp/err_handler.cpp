@@ -10,23 +10,11 @@ void kpp::critical_error()
 	exit(EXIT_FAILURE);
 }
 
-void kpp::lexer_error(const char* str)
-{
-	PRINT(C_RED, "LEXICAL ERROR: %s", str);
-}
-
 void kpp::parser_error(const char* str)
 {
 	if (err_lexer->eof())
 		PRINT(C_RED, "SYNTAX ERROR: %s (found end-of-line)", str);
 	else PRINT(C_RED, "SYNTAX ERROR: %s", str);
-
-	critical_error();
-}
-
-void kpp::semantic_error(const char* str)
-{
-	PRINT(C_RED, "SEMANTIC ERROR: %s", str);
 
 	critical_error();
 }

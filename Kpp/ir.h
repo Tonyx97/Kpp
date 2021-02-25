@@ -6,22 +6,71 @@ namespace kpp
 {
 	namespace ir
 	{
-		struct PrototypeParameter
+		enum IrType
 		{
-			Token type;
+			IR_NONE,
+			IR_BODY,
+			IR_EXPR,
+		};
 
+		enum IrExprType
+		{
+			IR_EXPR_NONE,
+			IR_EXPR_DECL_OR_ASSIGN,
+			IR_EXPR_BINARY_OP,
+			IR_EXPR_CALL,
+		};
+
+		struct IrBase
+		{
+			IrType ir_type = IR_NONE;
+		};
+
+		struct IrExpr : public IrBase
+		{
+			IrExprType ir_expr_type = IR_EXPR_NONE;
+
+			IrExpr() { ir_type = IR_EXPR; }
+		};
+
+		struct IrExprDeclOrAssign : public IrExpr
+		{
 			std::string name;
+
+			IrExpr* value = nullptr;
+
+			Token type = TOKEN_NONE;
+
+			IrExprDeclOrAssign()		{ ir_expr_type = IR_EXPR_DECL_OR_ASSIGN; }
+
+			bool is_declaration() const { return (type != TOKEN_NONE); }
+		};
+		
+		struct IrBody : public IrBase
+		{
+			std::vector<IrBase*> items;
+
+			IrBody() { ir_type = IR_BODY; }
+		};
+
+		struct PrototypeParam
+		{
+			std::string name;
+
+			Token type = TOKEN_NONE;
+
+			PrototypeParam(const std::string& name, Token type) : name(name), type(type) {}
 		};
 
 		struct Prototype
 		{
-			Token return_type = TOKEN_NONE;
-			
+			std::vector<PrototypeParam*> params;
+
 			std::string name;
 
-			bool declaration = false;
+			IrBody* body = nullptr;
 
-			std::vector<PrototypeParameter*> params;
+			Token return_type = TOKEN_NONE;
 		};
 
 		struct IR
@@ -29,14 +78,9 @@ namespace kpp
 			std::vector<Prototype*> prototypes;
 		};
 
-		struct Info
+		struct GlobalInfo
 		{
-			std::unordered_map<std::string, Prototype*> prototypes,
-														decl_prototypes;
-
-			std::unordered_map<std::string, std::string> vars;
-
-			Prototype* current = nullptr;
+			std::unordered_map<std::string, Prototype*> prototypes;
 		};
 	}
 
@@ -46,9 +90,11 @@ namespace kpp
 
 		ast::AST* tree = nullptr;
 
-		ir::IR* ir_info = nullptr;
+		ir::IR iri {};
 
-		ir::Info info {};
+		ir::GlobalInfo gi {};
+
+		int print_level = 0;
 
 	public:
 
@@ -56,20 +102,20 @@ namespace kpp
 		~ir_parser();
 
 		void print_ir();
-		void print_body();
+		void print_body(ir::IrBody* body);
+		void print_expr(ir::IrExpr* expr_base);
 
-		bool generate();
-		bool is_prototype_declared(const std::string& name);
-		bool is_prototype_defined(const std::string& name);
-		bool is_var_declared(const std::string& name);
-
-		ir::Prototype* get_prototype(const std::string& name);
-
-		void add_var(const std::string& name);
 		void add_prototype(ir::Prototype* prototype);
 
-		void generate_prototype(ast::Prototype* ast_prototype);
-		void generate_body(ast::StmtBody* ast_body);
-		void generate_expr(ast::Expr* ast_expr);
+		bool generate();
+
+		ir::Prototype* generate_prototype(ast::Prototype* prototype);
+		ir::IrBody* generate_body(ast::StmtBody* body);
+		ir::IrExpr* generate_expr(ast::Expr* expr);
+		ir::IrExprDeclOrAssign* generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
+
+		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
+
+		ast::Prototype* get_prototype_definition(ast::Prototype* prototype_decl);
 	};
 }

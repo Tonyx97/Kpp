@@ -18,10 +18,34 @@ namespace kpp
 		enum ExprType
 		{
 			EXPR_NONE,
-			EXPR_INT,
+			EXPR_INT_LITERAL,
+			EXPR_ID,
 			EXPR_DECL_OR_ASSIGN,
 			EXPR_BINARY_OP,
 			EXPR_CALL,
+		};
+
+		struct Int
+		{
+			union
+			{
+				uint64_t u64;
+				uint32_t u32;
+				uint16_t u16;
+				uint8_t u8;
+
+				int64_t i64;
+				int32_t i32;
+				int16_t i16;
+				int8_t i8;
+			};
+
+			template <typename T>
+			static Int create(T val)
+			{
+				Int obj {}; obj.u64 = val;
+				return obj;
+			}
 		};
 
 		struct StmtBase
@@ -31,16 +55,33 @@ namespace kpp
 
 		struct Expr : public StmtBase
 		{
-			std::string value;
+			std::string base_value;
 
 			ExprType expr_type = EXPR_NONE;
 
 			Token type = TOKEN_NONE;
 
-			Expr()																	{ stmt_type = STMT_EXPR; }
-			Expr(const std::string& value, Token type) : value(value), type(type)	{ stmt_type = STMT_EXPR; expr_type = EXPR_INT; }	// this could be any literal pls
+			Expr()	{ stmt_type = STMT_EXPR; }
+		};
 
-			static Expr* create(const std::string& value, Token type)				{ return new Expr(value, type); }
+		struct ExprIntLiteral : public Expr
+		{
+			Int value;
+			
+			Token type;
+
+			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ expr_type = EXPR_INT_LITERAL; }
+
+			static ExprIntLiteral* create(Int value, Token type)				{ return new ExprIntLiteral(value, type); }
+		};
+
+		struct ExprId : public Expr
+		{
+			std::string name;
+
+			ExprId(const std::string& name) : name(name)	{ expr_type = EXPR_ID; }
+
+			static ExprId* create(const std::string& value)	{ return new ExprId(value); }
 		};
 
 		struct StmtBody : public StmtBase
@@ -102,7 +143,7 @@ namespace kpp
 			Token op = TOKEN_NONE;
 			Expr* right = nullptr;
 
-			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ expr_type = EXPR_BINARY_OP; value = STRINGIFY_TOKEN(op); }
+			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ expr_type = EXPR_BINARY_OP; base_value = STRINGIFY_TOKEN(op); }
 
 			static ExprBinaryOp* create(Expr* left, Token op, Expr* right)						{ return new ExprBinaryOp(left, op, right); }
 		};
@@ -159,7 +200,8 @@ namespace kpp
 			void print_for(ast::StmtFor* stmt_for);
 			void print_expr(ast::Expr* expr);
 			void print_decl_or_assign(ast::ExprDeclOrAssign* assign);
-			void print_expr_int(ast::Expr* expr);
+			void print_expr_int(ast::ExprIntLiteral* expr);
+			void print_id(ast::ExprId* expr);
 			void print_expr_binary_op(ast::ExprBinaryOp* expr);
 			void print_expr_call(ast::ExprCall* expr);
 		};

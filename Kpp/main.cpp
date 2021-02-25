@@ -3,11 +3,12 @@
 #include "err_handler.h"
 #include "lexer.h"
 #include "parser.h"
+#include "semantic.h"
 #include "ir.h"
 
 int main(int argc, char** argv)
 {
-	PRINT(C_WHITE, "---------- LEXER (Lexic Analysis) ----------\n");
+	PRINT(C_CYAN, "---------- LEXER (Lexic Analysis) ----------\n");
 
 	kpp::lexer lexer;
 
@@ -22,8 +23,9 @@ int main(int argc, char** argv)
 	}
 
 	lexer.print_list();
+	lexer.print_errors();
 
-	PRINT(C_WHITE, "\n---------- PARSER (Syntax Analysis) ----------\n");
+	PRINT(C_CYAN, "\n---------- PARSER (Syntax Analysis) ----------\n");
 
 	kpp::parser parser(lexer);
 
@@ -32,24 +34,41 @@ int main(int argc, char** argv)
 		parser.parse();
 	}
 
-	PRINT(C_WHITE, "\n---------- AST ----------\n");
+	PRINT(C_CYAN, "\n---------- AST ----------\n");
 
 	parser.print_ast();
 
-	PRINT(C_WHITE, "\n---------- IR (Semantic Analysis) ----------\n");
+	PRINT(C_CYAN, "\n---------- Semantic Analysis ----------\n");
+
+	kpp::semantic semantic(parser.get_ast());
+	
+	{
+		PROFILE("Semantic Analyzer Time");
+
+		if (!semantic.analyze())
+		{
+			semantic.print_errors();
+
+			return std::cin.get();
+		}
+	}
+
+	PRINT(C_GREEN, "\nOK");
+	
+	PRINT(C_CYAN, "\n---------- IR ----------\n");
 
 	kpp::ir_parser ir_parser(parser.get_ast());
 
 	{
-		PROFILE("IR Parser Time");
+		PROFILE("IR Time");
 		ir_parser.generate();
 	}
 
-	PRINT(C_WHITE, "\n---------- IR Code ----------\n");
+	PRINT(C_CYAN, "\n---------- IR Code ----------\n");
 
 	ir_parser.print_ir();
 
-	PRINT(C_WHITE, "---------- ASM ----------\n");
+	PRINT(C_CYAN, "---------- ASM ----------\n");
 
 	{
 		PROFILE("ASM Generation Time");

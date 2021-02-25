@@ -89,7 +89,8 @@ namespace kpp
 
 		Token id = TOKEN_NONE;
 
-		int precedence = LOWEST_PRECEDENCE;
+		int precedence = LOWEST_PRECEDENCE,
+			line = 0;
 
 		bool is_operator = false;
 
@@ -138,27 +139,27 @@ namespace kpp
 
 	inline token_info static_tokens[] =
 	{
-		{ ">>=", TOKEN_SHR_ASSIGN, 14, true },
-		{ "<<=", TOKEN_SHL_ASSIGN, 14, true },
+		{ ">>=", TOKEN_SHR_ASSIGN, 14, 0, true },
+		{ "<<=", TOKEN_SHL_ASSIGN, 14, 0, true },
 
-		{ "==", TOKEN_EQUAL, 7, true },
-		{ "!=", TOKEN_NOT_EQUAL, 7, true },
-		{ ">=", TOKEN_GTE, 6, true },
-		{ "<=", TOKEN_LTE, 6, true },
-		{ "+=", TOKEN_ADD_ASSIGN, 14, true },
-		{ "-=", TOKEN_SUB_ASSIGN, 14, true },
-		{ "++", TOKEN_INC, 1, true },
-		{ "--", TOKEN_DEC, 1, true },
-		{ "*=", TOKEN_MUL_ASSIGN, 14, true },
-		{ "%=", TOKEN_MOD_ASSIGN, 14, true },
-		{ "/=", TOKEN_DIV_ASSIGN, 14, true },
-		{ "&=", TOKEN_AND_ASSIGN, 14, true },
-		{ "|=", TOKEN_OR_ASSIGN, 14, true },
-		{ "^=", TOKEN_XOR_ASSIGN, 14, true },
-		{ "&&", TOKEN_LOGICAL_AND, 11, true },
-		{ "||", TOKEN_LOGICAL_OR, 12, true },
-		{ ">>", TOKEN_SHR, 5, true },
-		{ "<<", TOKEN_SHL, 5, true },
+		{ "==", TOKEN_EQUAL, 7, 0, true },
+		{ "!=", TOKEN_NOT_EQUAL, 7, 0, true },
+		{ ">=", TOKEN_GTE, 6, 0, true },
+		{ "<=", TOKEN_LTE, 6, 0, true },
+		{ "+=", TOKEN_ADD_ASSIGN, 14, 0, true },
+		{ "-=", TOKEN_SUB_ASSIGN, 14, 0, true },
+		{ "++", TOKEN_INC, 1, 0, true },
+		{ "--", TOKEN_DEC, 1, 0, true },
+		{ "*=", TOKEN_MUL_ASSIGN, 14, 0, true },
+		{ "%=", TOKEN_MOD_ASSIGN, 14, 0, true },
+		{ "/=", TOKEN_DIV_ASSIGN, 14, 0, true },
+		{ "&=", TOKEN_AND_ASSIGN, 14, 0, true },
+		{ "|=", TOKEN_OR_ASSIGN, 14, 0, true },
+		{ "^=", TOKEN_XOR_ASSIGN, 14, 0, true },
+		{ "&&", TOKEN_LOGICAL_AND, 11,0,  true },
+		{ "||", TOKEN_LOGICAL_OR, 12,0,  true },
+		{ ">>", TOKEN_SHR, 5, 0, true },
+		{ "<<", TOKEN_SHL, 5, 0, true },
 
 		{ ";", TOKEN_SEMICOLON },
 		{ ",", TOKEN_COMMA, 15 },
@@ -166,20 +167,20 @@ namespace kpp
 		{ ")", TOKEN_PAREN_CLOSE, 1 },
 		{ "{", TOKEN_BRACKET_OPEN },
 		{ "}", TOKEN_BRACKET_CLOSE },
-		{ "[", TOKEN_BRACE_OPEN, 1, true },
-		{ "]", TOKEN_BRACE_CLOSE, 1, true },
-		{ "+", TOKEN_ADD, 4, true },
-		{ "-", TOKEN_SUB, 4, true },
-		{ "*", TOKEN_MUL, 3, true },
-		{ "%", TOKEN_MOD, 3, true },
-		{ "/", TOKEN_DIV, 3, true },
-		{ "&", TOKEN_AND, 8, true },
-		{ "|", TOKEN_OR, 10, true },
-		{ "^", TOKEN_XOR, 9, true },
-		{ "!", TOKEN_NOT, 2, true },
-		{ "=", TOKEN_ASSIGN, 14, true },
-		{ ">", TOKEN_GT, 6, true },
-		{ "<", TOKEN_LT, 6, true },
+		{ "[", TOKEN_BRACE_OPEN, 1, 0, true },
+		{ "]", TOKEN_BRACE_CLOSE, 1, 0, true },
+		{ "+", TOKEN_ADD, 4, 0, true },
+		{ "-", TOKEN_SUB, 4, 0, true },
+		{ "*", TOKEN_MUL, 3, 0, true },
+		{ "%", TOKEN_MOD, 3, 0, true },
+		{ "/", TOKEN_DIV, 3, 0, true },
+		{ "&", TOKEN_AND, 8, 0, true },
+		{ "|", TOKEN_OR, 10, 0, true },
+		{ "^", TOKEN_XOR, 9, 0, true },
+		{ "!", TOKEN_NOT, 2, 0, true },
+		{ "=", TOKEN_ASSIGN, 14, 0, true },
+		{ ">", TOKEN_GT, 6, 0, true },
+		{ "<", TOKEN_LT, 6, 0, true },
 	};
 
 	inline std::unordered_map<std::string, token_info> static_tokens_map;
@@ -280,6 +281,8 @@ namespace kpp
 		std::vector<token_info> tokens,
 								eaten_tokens;
 
+		std::vector<std::string> errors;
+
 	public:
 
 		lexer()  {}
@@ -293,8 +296,15 @@ namespace kpp
 		std::optional<token_info> eat_expect_keyword_declaration();
 
 		void print_list();
+		void print_errors();
 		void push_and_pop_token(const token_info& token);
 		void restore_last_eaten_token();
+
+		template <typename... A>
+		inline void add_error(const std::string& format, A... args)
+		{
+			errors.push_back(fmt(format, args...));
+		}
 
 		bool is_token_operator(const token_info& token);
 		bool is_token_keyword(const token_info& token);

@@ -124,8 +124,11 @@ void ast::Printer::print_expr(Expr* expr)
 
 	switch (expr->expr_type)
 	{
-	case EXPR_INT:
-		print_expr_int(expr);
+	case EXPR_INT_LITERAL:
+		print_expr_int(static_cast<ExprIntLiteral*>(expr));
+		break;
+	case EXPR_ID:
+		print_id(static_cast<ExprId*>(expr));
 		break;
 	case EXPR_DECL_OR_ASSIGN:
 		print_decl_or_assign(static_cast<ExprDeclOrAssign*>(expr));
@@ -163,9 +166,24 @@ void ast::Printer::print_decl_or_assign(ExprDeclOrAssign* assign)
 		print_expr(assign->value);
 }
 
-void ast::Printer::print_expr_int(Expr* expr)
+void ast::Printer::print_expr_int(ExprIntLiteral* expr)
 {
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%s'", expr->value.c_str());
+	switch (expr->type)
+	{
+	case TOKEN_U8:  PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u8", expr->value.u8);   break;
+	case TOKEN_U16: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u16", expr->value.u16); break;
+	case TOKEN_U32: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u32", expr->value.u32); break;
+	case TOKEN_U64: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u64", expr->value.u64); break;
+	case TOKEN_I8:  PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' i8", expr->value.i8);   break;
+	case TOKEN_I16: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' i16", expr->value.i16); break;
+	case TOKEN_I32: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' i32", expr->value.i32); break;
+	case TOKEN_I64: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' i64", expr->value.i64); break;
+	}
+}
+
+void ast::Printer::print_id(ast::ExprId* expr)
+{
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Id '%s'", expr->name.c_str());
 }
 
 void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
@@ -174,12 +192,12 @@ void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
 
 	++curr_level;
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->value.c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->base_value.c_str());
 
 	if (expr->left->expr_type == EXPR_BINARY_OP)
 		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->left));
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->value.c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->base_value.c_str());
 
 	if (expr->right->expr_type == EXPR_BINARY_OP)
 		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->right));

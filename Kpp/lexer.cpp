@@ -147,6 +147,8 @@ bool lexer::parse(const std::string& filename)
 
 			if (curr_token)
 			{
+				curr_token.line = line_num;
+
 				tokens.push_back(curr_token);
 
 				next(curr_token.value.length());
@@ -162,7 +164,7 @@ bool lexer::parse(const std::string& filename)
 				}
 				else next(line.length());
 				
-				lexer_error("Lexical error '%s' in %s:%i", invalid_token.c_str(), filename.c_str(), line_num);
+				add_error("%s:%i -> Unrecognized token '%s'", filename.c_str(), line_num, invalid_token.c_str());
 			}
 		}
 
@@ -224,12 +226,20 @@ token_info lexer::eat()
 
 void lexer::print_list()
 {
+	PRINT_NL;
+
 	for (auto&& token : tokens)
 	{
 		PRINT_ALIGN(C_YELLOW, 15, "'%s'", token.value.c_str());
 		PRINT_ALIGN(C_YELLOW, 15, "->");
 		PRINT(C_YELLOW, "type: %s", STRINGIFY_TOKEN(token.id).c_str());
 	}
+}
+
+void lexer::print_errors()
+{
+	for (auto&& err : errors)
+		PRINT(C_RED, err);
 }
 
 void lexer::push_and_pop_token(const token_info& token)
