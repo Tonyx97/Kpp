@@ -82,6 +82,15 @@ bool semantic::analyze_expr(ast::Expr* expr)
 {
 	switch (expr->expr_type)
 	{
+	case ast::EXPR_ID:
+	{
+		auto expr_id = static_cast<ast::ExprId*>(expr);
+
+		if (!is_variable_declared(expr_id->name))
+			add_error("'%s' identifier is undefined", expr_id->name.c_str());
+
+		break;
+	}
 	case ast::EXPR_DECL_OR_ASSIGN:
 	{
 		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(expr);
@@ -97,6 +106,21 @@ bool semantic::analyze_expr(ast::Expr* expr)
 		}
 		else if (!declared)
 			add_error("'%s' identifier is undefined", decl_or_assign->name.c_str());
+
+		if (decl_or_assign->value)
+			analyze_expr(decl_or_assign->value);
+
+		break;
+	}
+	case ast::EXPR_BINARY_OP:
+	{
+		auto binary_op = static_cast<ast::ExprBinaryOp*>(expr);
+
+		if (binary_op->left)
+			analyze_expr(binary_op->left);
+
+		if (binary_op->right)
+			analyze_expr(binary_op->right);
 
 		break;
 	}

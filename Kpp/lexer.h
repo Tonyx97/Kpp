@@ -274,6 +274,15 @@ namespace kpp
 		return (it != keywords_type.end() ? it->first : "unknown_type");
 	}
 
+	inline std::string STRINGIFY_OPERATOR(Token id)
+	{
+		for (auto&& token : static_tokens)
+			if (token.id == id)
+				return token.value;
+
+		return {};
+	}
+
 	class lexer
 	{
 	private:

@@ -4,6 +4,29 @@
 
 namespace kpp
 {
+	struct Int
+	{
+		union
+		{
+			uint64_t u64;
+			uint32_t u32;
+			uint16_t u16;
+			uint8_t u8;
+
+			int64_t i64;
+			int32_t i32;
+			int16_t i16;
+			int8_t i8;
+		};
+
+		template <typename T>
+		static Int create(T val)
+		{
+			Int obj{}; obj.u64 = val;
+			return obj;
+		}
+	};
+
 	namespace ast
 	{
 		enum StmtType
@@ -25,29 +48,6 @@ namespace kpp
 			EXPR_CALL,
 		};
 
-		struct Int
-		{
-			union
-			{
-				uint64_t u64;
-				uint32_t u32;
-				uint16_t u16;
-				uint8_t u8;
-
-				int64_t i64;
-				int32_t i32;
-				int16_t i16;
-				int8_t i8;
-			};
-
-			template <typename T>
-			static Int create(T val)
-			{
-				Int obj {}; obj.u64 = val;
-				return obj;
-			}
-		};
-
 		struct StmtBase
 		{
 			StmtType stmt_type = STMT_NONE;
@@ -55,7 +55,7 @@ namespace kpp
 
 		struct Expr : public StmtBase
 		{
-			std::string base_value;
+			std::string base_name;
 
 			ExprType expr_type = EXPR_NONE;
 
@@ -70,7 +70,7 @@ namespace kpp
 			
 			Token type;
 
-			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ expr_type = EXPR_INT_LITERAL; }
+			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ expr_type = EXPR_INT_LITERAL; base_name = std::to_string(value.u64); }
 
 			static ExprIntLiteral* create(Int value, Token type)				{ return new ExprIntLiteral(value, type); }
 		};
@@ -79,7 +79,7 @@ namespace kpp
 		{
 			std::string name;
 
-			ExprId(const std::string& name) : name(name)	{ expr_type = EXPR_ID; }
+			ExprId(const std::string& name) : name(name)	{ expr_type = EXPR_ID; base_name = name; }
 
 			static ExprId* create(const std::string& value)	{ return new ExprId(value); }
 		};
@@ -130,7 +130,7 @@ namespace kpp
 
 			Token type = TOKEN_NONE;
 
-			ExprDeclOrAssign(const std::string& name, Expr* value, Token type) : name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; }
+			ExprDeclOrAssign(const std::string& name, Expr* value, Token type) : name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; base_name = name; }
 
 			bool is_declaration() const																					{ return (type != TOKEN_NONE); }
 
@@ -143,7 +143,7 @@ namespace kpp
 			Token op = TOKEN_NONE;
 			Expr* right = nullptr;
 
-			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ expr_type = EXPR_BINARY_OP; base_value = STRINGIFY_TOKEN(op); }
+			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ expr_type = EXPR_BINARY_OP; base_name = STRINGIFY_TOKEN(op); }
 
 			static ExprBinaryOp* create(Expr* left, Token op, Expr* right)						{ return new ExprBinaryOp(left, op, right); }
 		};
@@ -154,7 +154,7 @@ namespace kpp
 			
 			std::vector<Expr*> stmts;
 
-			ExprCall(const std::string& name) : name(name)		{ expr_type = EXPR_CALL; }
+			ExprCall(const std::string& name) : name(name)		{ expr_type = EXPR_CALL; base_name = name; }
 
 			static ExprCall* create(const std::string& name)	{ return new ExprCall(name); }
 		};

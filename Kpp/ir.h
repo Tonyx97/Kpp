@@ -16,39 +16,72 @@ namespace kpp
 		enum IrExprType
 		{
 			IR_EXPR_NONE,
+			IR_EXPR_INT_LITERAL,
 			IR_EXPR_DECL_OR_ASSIGN,
 			IR_EXPR_BINARY_OP,
 			IR_EXPR_CALL,
 		};
 
-		struct IrBase
+		struct Base
 		{
 			IrType ir_type = IR_NONE;
 		};
 
-		struct IrExpr : public IrBase
+		struct Expr : public Base
 		{
 			IrExprType ir_expr_type = IR_EXPR_NONE;
 
-			IrExpr() { ir_type = IR_EXPR; }
+			Expr() { ir_type = IR_EXPR; }
+
+			virtual std::string get_name() = 0;
 		};
 
-		struct IrExprDeclOrAssign : public IrExpr
+		struct ExprIntLiteral : public Expr
+		{
+			Int value;
+
+			Token type;
+
+			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ ir_expr_type = IR_EXPR_INT_LITERAL; }
+
+			static ExprIntLiteral* create(Int value, Token type)				{ return new ExprIntLiteral(value, type); }
+
+			std::string get_name() override										{ return {}; }
+		};
+
+		struct ExprDeclOrAssign : public Expr
 		{
 			std::string name;
 
-			IrExpr* value = nullptr;
+			Expr* value = nullptr;
 
 			Token type = TOKEN_NONE;
 
-			IrExprDeclOrAssign()		{ ir_expr_type = IR_EXPR_DECL_OR_ASSIGN; }
+			ExprDeclOrAssign()					{ ir_expr_type = IR_EXPR_DECL_OR_ASSIGN; }
+			
+			static ExprDeclOrAssign* create()	{ return new ExprDeclOrAssign(); }
 
-			bool is_declaration() const { return (type != TOKEN_NONE); }
+			bool is_declaration() const			{ return (type != TOKEN_NONE); }
+			
+			std::string get_name() override		{ return name; }
+		};
+
+		struct ExprBinaryOp : public Expr
+		{
+			Expr* left = nullptr;
+			Token op = TOKEN_NONE;
+			Expr* right = nullptr;
+
+			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ ir_expr_type = IR_EXPR_BINARY_OP; }
+
+			static ExprBinaryOp* create(Expr* left, Token op, Expr* right)						{ return new ExprBinaryOp(left, op, right); }
+
+			std::string get_name() override														{ return STRINGIFY_TOKEN(op); }
 		};
 		
-		struct IrBody : public IrBase
+		struct IrBody : public Base
 		{
-			std::vector<IrBase*> items;
+			std::vector<Base*> items;
 
 			IrBody() { ir_type = IR_BODY; }
 		};
@@ -82,6 +115,32 @@ namespace kpp
 		{
 			std::unordered_map<std::string, Prototype*> prototypes;
 		};
+
+		struct PrototypeInfo
+		{
+			Prototype* curr_prototype = nullptr;
+
+			std::unordered_map<std::string, Expr*> vars;
+
+			void clear()
+			{
+				vars.clear();
+			}
+		};
+	}
+
+	inline std::string STRINGIFY_OP_IR(Token op)
+	{
+		switch (op)
+		{
+		case TOKEN_ADD: return "add";
+		case TOKEN_SUB: return "sub";
+		case TOKEN_MUL: return "mul";
+		case TOKEN_DIV: return "div";
+		case TOKEN_MOD: return "mod";
+		}
+
+		return "unknown";
 	}
 
 	class ir_parser
@@ -94,6 +153,8 @@ namespace kpp
 
 		ir::GlobalInfo gi {};
 
+		ir::PrototypeInfo pi {};
+
 		int print_level = 0;
 
 	public:
@@ -103,16 +164,22 @@ namespace kpp
 
 		void print_ir();
 		void print_body(ir::IrBody* body);
-		void print_expr(ir::IrExpr* expr_base);
+		void print_expr(ir::Expr* expr_base);
+		void print_expr_int_literal(ir::ExprIntLiteral* expr);
 
 		void add_prototype(ir::Prototype* prototype);
+		void add_var(const std::string& name, ir::Expr* expr);
+
+		ir::Expr* get_declared_var(const std::string& name);
 
 		bool generate();
 
 		ir::Prototype* generate_prototype(ast::Prototype* prototype);
 		ir::IrBody* generate_body(ast::StmtBody* body);
-		ir::IrExpr* generate_expr(ast::Expr* expr);
-		ir::IrExprDeclOrAssign* generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
+		ir::Expr* generate_expr(ast::Expr* expr);
+		ir::ExprDeclOrAssign* generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
+		ir::ExprIntLiteral* generate_expr_int_literal(ast::ExprIntLiteral* expr);
+		ir::ExprBinaryOp* generate_expr_binary_op(ast::ExprBinaryOp* expr);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 

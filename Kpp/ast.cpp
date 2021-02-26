@@ -188,16 +188,16 @@ void ast::Printer::print_id(ast::ExprId* expr)
 
 void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
 {
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Binary Op (%s)", STRINGIFY_TOKEN(expr->op).c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Binary Op (%s)", expr->base_name.c_str());
 
 	++curr_level;
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->base_value.c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->base_name.c_str());
 
 	if (expr->left->expr_type == EXPR_BINARY_OP)
 		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->left));
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->base_value.c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->base_name.c_str());
 
 	if (expr->right->expr_type == EXPR_BINARY_OP)
 		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->right));
