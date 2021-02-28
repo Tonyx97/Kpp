@@ -30,7 +30,7 @@ bool semantic::analyze_prototype(ast::Prototype* prototype)
 {
 	pi.curr_prototype = prototype;
 
-	if (prototype->declaration)
+	if (prototype->is_declaration())
 		add_prototype_decl(prototype->name);
 	else add_prototype(prototype->name);
 
@@ -42,10 +42,10 @@ bool semantic::analyze_prototype(ast::Prototype* prototype)
 	{
 		auto param_decl = static_cast<ast::ExprDeclOrAssign*>(param);
 
-		if (pi.vars.find(param_decl->name) != pi.vars.end())
+		if (pi.values.find(param_decl->name) != pi.values.end())
 			add_error("Parameter '%s' already defined in prototype declaration", param_decl->name.c_str());
 
-		pi.vars.insert(param_decl->name);
+		pi.values.insert(param_decl->name);
 	}
 
 	if (auto body = prototype->body)
@@ -174,12 +174,12 @@ void semantic::add_prototype(const std::string& name)
 
 void semantic::add_variable(const std::string& name)
 {
-	pi.vars.insert(name);
+	pi.values.insert(name);
 }
 
 bool semantic::is_variable_declared(const std::string& name)
 {
-	return (pi.vars.find(name) != pi.vars.end());
+	return (pi.values.find(name) != pi.values.end());
 }
 
 ast::Prototype* semantic::get_prototype(const std::string& name)

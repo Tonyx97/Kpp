@@ -29,14 +29,16 @@ void ast::Printer::print_prototype(Prototype* prototype)
 		});
 	}
 
-	if (prototype->declaration)
+	const bool declaration = prototype->is_declaration();
+
+	if (declaration)
 		PRINT_TABS(C_WHITE, 0, " (Declaration)");
 	else PRINT_NL;
 
 	if (prototype->body)
 		print_body(prototype->body);
 
-	if (!prototype->declaration)
+	if (!declaration)
 		PRINT_TABS_NL(C_WHITE, curr_level, "End");
 
 	first_prototype_printed = true;

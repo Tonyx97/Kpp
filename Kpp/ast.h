@@ -140,12 +140,15 @@ namespace kpp
 		struct ExprBinaryOp : public Expr
 		{
 			Expr* left = nullptr;
-			Token op = TOKEN_NONE;
+
+			Token op = TOKEN_NONE,
+				  ty = TOKEN_NONE;
+
 			Expr* right = nullptr;
 
-			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ expr_type = EXPR_BINARY_OP; base_name = STRINGIFY_TOKEN(op); }
+			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) : left(left), op(op), ty(ty), right(right)	{ expr_type = EXPR_BINARY_OP; base_name = STRINGIFY_TOKEN(op); }
 
-			static ExprBinaryOp* create(Expr* left, Token op, Expr* right)						{ return new ExprBinaryOp(left, op, right); }
+			static ExprBinaryOp* create(Expr* left, Token op, Token ty, Expr* right)								{ return new ExprBinaryOp(left, op, ty, right); }
 		};
 
 		struct ExprCall : public Expr
@@ -169,11 +172,11 @@ namespace kpp
 
 			Token return_type = TOKEN_NONE;
 
-			bool declaration = false;
-
 			Prototype(const std::string& name) : name(name)		{}
 			
 			static Prototype* create(const std::string& name)	{ return new Prototype(name); }
+
+			bool is_declaration() const							{ return !body; }
 		};
 
 		struct AST

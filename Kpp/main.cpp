@@ -57,16 +57,16 @@ int main(int argc, char** argv)
 	
 	PRINT(C_CYAN, "\n---------- IR ----------\n");
 
-	kpp::ir_parser ir_parser(parser.get_ast());
+	kpp::ir_gen ir_gen(parser.get_ast());
 
 	{
 		PROFILE("IR Time");
-		ir_parser.generate();
+		ir_gen.generate();
 	}
 
 	PRINT(C_CYAN, "\n---------- IR Code ----------\n");
 
-	ir_parser.print_ir();
+	ir_gen.print_ir();
 
 	PRINT(C_CYAN, "---------- ASM ----------\n");
 

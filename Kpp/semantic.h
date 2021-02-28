@@ -8,13 +8,13 @@ namespace kpp
 	{
 		ast::Prototype* curr_prototype = nullptr;
 
-		std::unordered_set<std::string> vars;
+		std::unordered_set<std::string> values;
 
 		void clear()
 		{
 			curr_prototype = nullptr;
 
-			vars.clear();
+			values.clear();
 		}
 	};
 

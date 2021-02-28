@@ -55,8 +55,6 @@ ast::Prototype* parser::parse_prototype()
 					{
 						lex.eat();
 
-						prototype->declaration = true;
-
 						return prototype;
 					}
 				}
@@ -251,7 +249,7 @@ ast::Expr* parser::parse_expression_precedence(ast::Expr* lhs, int min_precedenc
 			lookahead = lex.current();
 		}
 
-		lhs = ast::ExprBinaryOp::create(lhs, op.id, rhs);
+		lhs = ast::ExprBinaryOp::create(lhs, op.id, TOKEN_I32, rhs);	// we have to check for the real type
 	}
 
 	return lhs;
@@ -263,7 +261,7 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		lex.eat();
 
-		return ast::ExprIntLiteral::create(Int::create(std::stoll(curr.value)), TOKEN_I32);
+		return ast::ExprIntLiteral::create(Int::create(std::stoll(curr.value)), TOKEN_I32);	// we have to check for the real type
 	}
 	else if (lex.is(curr, TOKEN_ID))
 	{

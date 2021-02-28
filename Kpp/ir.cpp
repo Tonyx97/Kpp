@@ -4,15 +4,38 @@
 
 using namespace kpp;
 
-ir_parser::ir_parser(ast::AST* tree) : tree(tree)
+namespace kpp::ir
+{
+	void StackAlloc::print()
+	{
+		PRINT_TABS_NL(C_WHITE, 1, value + " = stackalloc " + STRINGIFY_TYPE(ty));
+	}
+
+	void Store::print()
+	{
+		PRINT_TABS_NL(C_WHITE, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value());
+	}
+
+	void ValueInt::print()
+	{
+		//PRINT_TABS_NL(C_WHITE, 1, name + " = " + std::to_string(value.u64));
+	}
+
+	void BinaryOp::print()
+	{
+		PRINT_TABS_NL(C_WHITE, 1, value + " = " + STRINGIFY_OP_IR(op) + " " + left->get_value() + ", " + right->get_value());
+	}
+}
+
+ir_gen::ir_gen(ast::AST* tree) : tree(tree)
 {
 }
 
-ir_parser::~ir_parser()
+ir_gen::~ir_gen()
 {
 }
 
-void ir_parser::print_ir()
+void ir_gen::print_ir()
 {
 	for (auto&& prototype : iri.prototypes)
 	{
@@ -35,101 +58,32 @@ void ir_parser::print_ir()
 	}
 }
 
-void ir_parser::print_prototype(ir::Prototype* prototype)
+void ir_gen::print_prototype(ir::Prototype* prototype)
 {
 	PRINT_TABS_NL(C_WHITE, print_level, "{");
 
 	++print_level;
 
 	for (auto&& item : prototype->items)
-	{
-		switch (item->ir_type)
-		{
-		case ir::IR_EXPR:
-		{
-			print_expr(static_cast<ir::Expr*>(item));
-			break;
-		}
-		}
-	}
+		print_item(item);
 
 	--print_level;
 
 	PRINT_TABS_NL(C_WHITE, print_level, "}");
 }
 
-void ir_parser::print_expr(ir::Expr* expr_base)
+void ir_gen::print_item(ir::Base* base)
 {
-	switch (expr_base->ir_expr_type)
-	{
-	case ir::IR_EXPR_DECL_OR_ASSIGN:
-	{
-		auto expr = static_cast<ir::ExprDeclOrAssign*>(expr_base);
-		
-		const bool declaration = expr->is_declaration();
-
-		auto value_type = expr->value->ir_expr_type;
-
-		if (expr->is_declaration())
-			PRINT_TABS(C_WHITE, print_level, "(decl) %s = ", expr->var_name.c_str());
-		else PRINT_TABS(C_WHITE, print_level, "%s = ", expr->var_name.c_str());
-
-		if (value_type == ir::IR_EXPR_INT_LITERAL)
-			PRINT_NNL(C_WHITE, "%i", static_cast<ir::ExprIntLiteral*>(expr->value)->value.u64);
-		else PRINT_NNL(C_WHITE, "%s", expr->value->var_name.c_str());
-
-		PRINT_NL;
-
-		break;
-	}
-	case ir::IR_EXPR_BINARY_OP:
-	{
-		auto expr = static_cast<ir::ExprBinaryOp*>(expr_base);
-
-		PRINT_TABS(C_WHITE, print_level, "%s = %s ", expr->get_value().c_str(), STRINGIFY_OP_IR(expr->op).c_str());
-
-		if (expr->left)
-			PRINT_NNL(C_WHITE, "%s", expr->left->get_value().c_str());
-
-		PRINT_NNL(C_WHITE, ", ");
-
-		if (expr->right)
-			PRINT_NNL(C_WHITE, "%s", expr->right->get_value().c_str());
-
-		PRINT_NL;
-
-		break;
-	}
-	case ir::IR_EXPR_INT_LITERAL:
-	{
-		print_expr_int_literal(static_cast<ir::ExprIntLiteral*>(expr_base));
-		break;
-	}
-	}
+	base->print();
 }
 
-void ir_parser::print_expr_int_literal(ir::ExprIntLiteral* expr)
-{
-	switch (expr->type)
-	{
-	case TOKEN_U8:  PRINT_NNL(C_WHITE, "%i", expr->value.u8);  break;
-	case TOKEN_U16: PRINT_NNL(C_WHITE, "%i", expr->value.u16); break;
-	case TOKEN_U32: PRINT_NNL(C_WHITE, "%i", expr->value.u32); break;
-	case TOKEN_U64: PRINT_NNL(C_WHITE, "%i", expr->value.u64); break;
-	case TOKEN_I8:  PRINT_NNL(C_WHITE, "%i", expr->value.i8);  break;
-	case TOKEN_I16: PRINT_NNL(C_WHITE, "%i", expr->value.i16); break;
-	case TOKEN_I32: PRINT_NNL(C_WHITE, "%i", expr->value.i32); break;
-	case TOKEN_I64: PRINT_NNL(C_WHITE, "%i", expr->value.i64); break;
-	}
-}
-
-void ir_parser::add_prototype(ir::Prototype* prototype)
+void ir_gen::add_prototype(ir::Prototype* prototype)
 {
 	gi.prototypes.insert({ prototype->name, prototype });
 	iri.prototypes.push_back(prototype);
 }
 
-bool ir_parser::generate()
+bool ir_gen::generate()
 {
 	if (!tree)
 		return false;
@@ -140,12 +94,12 @@ bool ir_parser::generate()
 	return true;
 }
 
-ir::Prototype* ir_parser::generate_prototype(ast::Prototype* prototype)
+ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 {
 	if (auto defined_prototype = get_defined_prototype(prototype))
 		return defined_prototype;
 
-	if (prototype->declaration)
+	if (prototype->is_declaration())
 	{
 		if (auto prototype_def = get_prototype_definition(prototype))
 			return generate_prototype(prototype_def);
@@ -165,7 +119,7 @@ ir::Prototype* ir_parser::generate_prototype(ast::Prototype* prototype)
 	}
 
 	if (prototype->body)
-		ir_prototype->body = generate_body(prototype->body);
+		ir_prototype->body = generate_from_body(prototype->body);
 
 	add_prototype(ir_prototype);
 
@@ -175,7 +129,7 @@ ir::Prototype* ir_parser::generate_prototype(ast::Prototype* prototype)
 	return ir_prototype;
 }
 
-ir::Body* ir_parser::generate_body(ast::StmtBody* body)
+ir::Body* ir_gen::generate_from_body(ast::StmtBody* body)
 {
 	auto ir_body = new ir::Body();
 
@@ -183,72 +137,99 @@ ir::Body* ir_parser::generate_body(ast::StmtBody* body)
 	{
 		switch (stmt->stmt_type)
 		{
-		case ast::STMT_BODY: generate_body(reinterpret_cast<ast::StmtBody*>(stmt)); break;
-		case ast::STMT_EXPR: generate_expr(reinterpret_cast<ast::Expr*>(stmt));		break;
+		case ast::STMT_BODY: generate_from_body(reinterpret_cast<ast::StmtBody*>(stmt)); break;
+		case ast::STMT_EXPR: generate_from_expr(reinterpret_cast<ast::Expr*>(stmt));	 break;
 		}
 	}
 
 	return ir_body;
 }
 
-ir::Expr* ir_parser::generate_expr(ast::Expr* expr)
+ir::Base* ir_gen::generate_from_expr(ast::Expr* expr)
 {
 	switch (expr->expr_type)
 	{
-	case ast::EXPR_ID:			   return generate_expr_id(static_cast<ast::ExprId*>(expr));
-	case ast::EXPR_DECL_OR_ASSIGN: return generate_expr_decl_or_assign(static_cast<ast::ExprDeclOrAssign*>(expr));
-	case ast::EXPR_INT_LITERAL:	   return generate_expr_int_literal(static_cast<ast::ExprIntLiteral*>(expr));
-	case ast::EXPR_BINARY_OP:	   return generate_expr_binary_op(static_cast<ast::ExprBinaryOp*>(expr));
+	case ast::EXPR_DECL_OR_ASSIGN: return generate_from_expr_decl_or_assign(static_cast<ast::ExprDeclOrAssign*>(expr));
+	case ast::EXPR_INT_LITERAL:	   return generate_from_expr_int_literal(static_cast<ast::ExprIntLiteral*>(expr));
+	case ast::EXPR_BINARY_OP:	   return generate_from_expr_binary_op(static_cast<ast::ExprBinaryOp*>(expr));
+	//case ast::EXPR_ID:		   return generate_expr_id(static_cast<ast::ExprId*>(expr));
 	}
 
 	return nullptr;
 }
 
-ir::ExprId* ir_parser::generate_expr_id(ast::ExprId* expr)
+ir::Base* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
+{
+	if (expr->is_declaration())
+	{
+		auto stack_alloc = new ir::StackAlloc();
+
+		stack_alloc->value = pi.create_value(expr->name, stack_alloc);
+		stack_alloc->ty = expr->type;
+
+		pi.create_item(stack_alloc);
+
+		if (expr->value)
+		{
+			auto store = new ir::Store();
+
+			store->value = stack_alloc->value;
+			store->ty = stack_alloc->ty;
+			store->operand = generate_from_expr(expr->value);
+
+			pi.create_item(store);
+		}
+
+		return stack_alloc;
+	}
+	else
+	{
+
+		return nullptr;
+	}
+}
+
+ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
+{
+	auto value_int = new ir::ValueInt();
+
+	value_int->value = expr->value;
+	value_int->ty = expr->type;
+	value_int->name = pi.create_value(expr->base_name, value_int);
+
+	pi.create_item(value_int);
+
+	return value_int;
+}
+
+ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
+{
+	auto binary_op = new ir::BinaryOp();
+
+	binary_op->value = pi.create_value(expr->base_name, binary_op);
+	binary_op->left = generate_from_expr(expr->left);
+	binary_op->op = expr->op;
+	binary_op->ty = expr->ty;
+	binary_op->right = generate_from_expr(expr->right);
+
+	pi.create_item(binary_op);
+
+	return binary_op;
+}
+
+/*
+ir::ExprId* ir_gen::generate_expr_id(ast::ExprId* expr)
 {
 	auto expr_id = ir::ExprId::create();
 
-	if (auto var_name = pi.get_var_from_name(expr->name))
+	if (auto var_name = pi.get_value_from_name(expr->name))
 		expr_id->var_name = *var_name;
-	else expr_id->var_name = pi.create_var(expr->name, expr_id);
+	else expr_id->var_name = pi.create_value(expr->name, expr_id);
 
 	return expr_id;
 }
 
-ir::ExprDeclOrAssign* ir_parser::generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
-{
-	if (expr->is_declaration() && !expr->value)
-	{
-		// do stack allocation
-
-		return nullptr;
-	}
-	
-	if (!expr->value)
-		return nullptr;
-
-	// do stack allocation
-
-	auto expr_decl_or_assign = ir::ExprDeclOrAssign::create();
-
-	expr_decl_or_assign->value = generate_expr(expr->value);
-	expr_decl_or_assign->type = expr->type;
-
-	if (auto var_name = pi.get_var_from_name(expr->name))
-		expr_decl_or_assign->var_name = *var_name;
-	else expr_decl_or_assign->var_name = pi.create_var(expr->name, expr_decl_or_assign);
-
-	pi.create_item(expr_decl_or_assign);
-
-	return expr_decl_or_assign;
-}
-
-ir::ExprIntLiteral* ir_parser::generate_expr_int_literal(ast::ExprIntLiteral* expr)
-{
-	return ir::ExprIntLiteral::create(expr->value, expr->type);
-}
-
-ir::ExprBinaryOp* ir_parser::generate_expr_binary_op(ast::ExprBinaryOp* expr)
+ir::ExprBinaryOp* ir_gen::generate_expr_binary_op(ast::ExprBinaryOp* expr)
 {
 	ir::Expr* left = nullptr,
 			* right = nullptr;
@@ -261,20 +242,20 @@ ir::ExprBinaryOp* ir_parser::generate_expr_binary_op(ast::ExprBinaryOp* expr)
 
 	auto expr_bin_op = ir::ExprBinaryOp::create(left, expr->op, right);
 
-	expr_bin_op->var_name = pi.create_var("binary_op", expr_bin_op);
+	expr_bin_op->var_name = pi.create_value("binary_op", expr_bin_op);
 
 	pi.create_item(expr_bin_op);
 
 	return expr_bin_op;
-}
+}*/
 
-ir::Prototype* ir_parser::get_defined_prototype(ast::Prototype* prototype)
+ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)
 {
 	auto it = gi.prototypes.find(prototype->name);
 	return (it != gi.prototypes.end() ? it->second : nullptr);
 }
 
-ast::Prototype* ir_parser::get_prototype_definition(ast::Prototype* prototype_decl)
+ast::Prototype* ir_gen::get_prototype_definition(ast::Prototype* prototype_decl)
 {
 	if (!prototype_decl)
 		return nullptr;
@@ -282,7 +263,7 @@ ast::Prototype* ir_parser::get_prototype_definition(ast::Prototype* prototype_de
 	const auto& prototype_decl_name = prototype_decl->name;
 
 	for (auto&& prototype : tree->prototypes)
-		if (!prototype->name.compare(prototype_decl_name) && !prototype->declaration)
+		if (!prototype->name.compare(prototype_decl_name) && !prototype->is_declaration())
 			return prototype;
 
 	return nullptr;

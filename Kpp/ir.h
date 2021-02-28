@@ -6,94 +6,83 @@ namespace kpp
 {
 	namespace ir
 	{
-		enum IrType
-		{
-			IR_NONE,
-			IR_BODY,
-			IR_EXPR,
-		};
-
-		enum IrExprType
-		{
-			IR_EXPR_NONE,
-			IR_EXPR_ID,
-			IR_EXPR_INT_LITERAL,
-			IR_EXPR_DECL_OR_ASSIGN,
-			IR_EXPR_BINARY_OP,
-			IR_EXPR_CALL,
-		};
-
 		struct Base
 		{
-			IrType ir_type = IR_NONE;
-		};
-
-		struct Expr : public Base
-		{
-			std::string var_name;
-			
-			IrExprType ir_expr_type = IR_EXPR_NONE;
-
-			Expr() { ir_type = IR_EXPR; }
-
+			virtual void print() = 0;
+			virtual Token get_type() = 0;
 			virtual std::string get_value() = 0;
-		};
-
-		struct ExprIntLiteral : public Expr
-		{
-			Int value;
-
-			Token type;
-
-			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ ir_expr_type = IR_EXPR_INT_LITERAL; }
-
-			static ExprIntLiteral* create(Int value, Token type)				{ return new ExprIntLiteral(value, type); }
-
-			virtual std::string get_value() override							{ return std::to_string(value.u64); }
-		};
-
-		struct ExprId : public Expr
-		{
-			ExprId()									{ ir_expr_type = IR_EXPR_ID; }
-
-			static ExprId* create()						{ return new ExprId(); }
-
-			virtual std::string get_value() override	{ return var_name; }
-		};
-
-		struct ExprDeclOrAssign : public Expr
-		{
-			Expr* value = nullptr;
-
-			Token type = TOKEN_NONE;
-
-			ExprDeclOrAssign()							{ ir_expr_type = IR_EXPR_DECL_OR_ASSIGN; }
-			
-			static ExprDeclOrAssign* create()			{ return new ExprDeclOrAssign(); }
-
-			bool is_declaration() const					{ return (type != TOKEN_NONE); }
-
-			virtual std::string get_value() override	{ return var_name; }
-		};
-
-		struct ExprBinaryOp : public Expr
-		{
-			Expr* left = nullptr;
-
-			Token op = TOKEN_NONE;
-
-			Expr* right = nullptr;
-
-			ExprBinaryOp(Expr* left, Token op, Expr* right) : left(left), op(op), right(right)	{ ir_expr_type = IR_EXPR_BINARY_OP; }
-
-			static ExprBinaryOp* create(Expr* left, Token op, Expr* right)						{ return new ExprBinaryOp(left, op, right); }
-			
-			virtual std::string get_value() override											{ return var_name; }
 		};
 		
 		struct Body : public Base
 		{
-			Body() { ir_type = IR_BODY; }
+			Body()								{}
+
+			void print() override				{}
+
+			Token get_type() override			{ return TOKEN_NONE; };
+
+			std::string get_value() override	{ return {}; }
+		};
+
+		struct ValueInt : public Base
+		{
+			std::string name;
+
+			Int value;
+
+			Token ty = TOKEN_NONE;
+
+			void print() override;
+			
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return std::to_string(value.u64); }
+		};
+
+		struct BinaryOp : public Base
+		{
+			std::string value;
+			
+			Base* left = nullptr;
+
+			Token op = TOKEN_NONE,
+				  ty = TOKEN_NONE;
+
+			Base* right = nullptr;
+
+			void print() override;
+
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return value; }
+		};
+
+		struct StackAlloc : public Base
+		{
+			std::string value;
+
+			Token ty;
+
+			void print() override;
+			
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return value; }
+		};
+
+		struct Store : public Base
+		{
+			std::string value;
+
+			Token ty = TOKEN_NONE;
+
+			Base* operand = nullptr;
+
+			void print() override;
+			
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return value; }
 		};
 
 		struct PrototypeParam
@@ -107,8 +96,8 @@ namespace kpp
 
 		struct Prototype
 		{
-			std::unordered_map<std::string, Expr*> vars;
-			std::unordered_map<std::string, std::string> vars_lookup;
+			std::unordered_map<std::string, Base*> values;
+			std::unordered_map<std::string, std::string> values_lookup;
 
 			std::vector<PrototypeParam*> params;
 
@@ -138,8 +127,8 @@ namespace kpp
 		{
 			Prototype* curr_prototype = nullptr;
 
-			std::unordered_map<std::string, Expr*> vars;
-			std::unordered_map<std::string, std::string> vars_lookup;
+			std::unordered_map<std::string, Base*> values;
+			std::unordered_map<std::string, std::string> values_lookup;
 
 			std::vector<Base*> items;
 
@@ -152,15 +141,15 @@ namespace kpp
 
 				stack_size = aligned_stack_size = 0;
 
-				vars.clear();
-				vars_lookup.clear();
+				values.clear();
+				values_lookup.clear();
 				items.clear();
 			}
 
 			void copy_to_prototype(Prototype* prototype)
 			{
-				prototype->vars = vars;
-				prototype->vars_lookup = vars_lookup;
+				prototype->values = values;
+				prototype->values_lookup = values_lookup;
 				prototype->items = items;
 				prototype->stack_size = stack_size;
 				prototype->aligned_stack_size = aligned_stack_size;
@@ -171,18 +160,18 @@ namespace kpp
 				items.push_back(base);
 			}
 
-			std::optional<std::string> get_var_from_name(const std::string& name)
+			std::optional<std::string> get_value_from_name(const std::string& name)
 			{
-				if (auto it = vars_lookup.find(name); it != vars_lookup.end())
+				if (auto it = values_lookup.find(name); it != values_lookup.end())
 					return it->second;
 				return {};
 			}
 
-			std::string create_var(const std::string& name, ir::Expr* expr)
+			std::string create_value(const std::string& name, ir::Base* item)
 			{
-				auto var_name = "v" + std::to_string(vars.size());
-				vars.insert({ var_name, expr });
-				vars_lookup.insert({ name, var_name });
+				auto var_name = "v" + std::to_string(values.size());
+				values.insert({ var_name, item });
+				values_lookup.insert({ name, var_name });
 				return var_name;
 			}
 		};
@@ -202,7 +191,7 @@ namespace kpp
 		return "unknown";
 	}
 
-	class ir_parser
+	class ir_gen
 	{
 	private:
 
@@ -218,27 +207,27 @@ namespace kpp
 
 	public:
 
-		ir_parser(ast::AST* tree);
-		~ir_parser();
+		ir_gen(ast::AST* tree);
+		~ir_gen();
 
 		void print_ir();
 		void print_prototype(ir::Prototype* prototype);
-		void print_expr(ir::Expr* expr_base);
-		void print_expr_int_literal(ir::ExprIntLiteral* expr);
+		void print_item(ir::Base* base);
 
 		void add_prototype(ir::Prototype* prototype);
 
 		bool generate();
 
 		ir::Prototype* generate_prototype(ast::Prototype* prototype);
-		ir::Body* generate_body(ast::StmtBody* body);
+		ir::Body* generate_from_body(ast::StmtBody* body);
 
-		ir::Expr* generate_expr(ast::Expr* expr);
+		ir::Base* generate_from_expr(ast::Expr* expr);
+		ir::Base* generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
+		ir::ValueInt* generate_from_expr_int_literal(ast::ExprIntLiteral* expr);
+		ir::BinaryOp* generate_from_expr_binary_op(ast::ExprBinaryOp* expr);
 
-		ir::ExprId* generate_expr_id(ast::ExprId* expr);
-		ir::ExprDeclOrAssign* generate_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
-		ir::ExprIntLiteral* generate_expr_int_literal(ast::ExprIntLiteral* expr);
-		ir::ExprBinaryOp* generate_expr_binary_op(ast::ExprBinaryOp* expr);
+		/*
+		ir::ExprId* generate_expr_id(ast::ExprId* expr);*/
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 
