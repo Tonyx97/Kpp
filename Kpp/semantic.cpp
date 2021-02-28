@@ -45,7 +45,7 @@ bool semantic::analyze_prototype(ast::Prototype* prototype)
 		if (pi.values.find(param_decl->name) != pi.values.end())
 			add_error("Parameter '%s' already defined in prototype declaration", param_decl->name.c_str());
 
-		pi.values.insert(param_decl->name);
+		add_variable(param_decl);
 	}
 
 	if (auto body = prototype->body)
@@ -85,9 +85,11 @@ bool semantic::analyze_expr(ast::Expr* expr)
 	case ast::EXPR_ID:
 	{
 		auto expr_id = static_cast<ast::ExprId*>(expr);
+		auto variable = get_declared_variable(expr_id->name);
 
-		if (!is_variable_declared(expr_id->name))
+		if (!variable)
 			add_error("'%s' identifier is undefined", expr_id->name.c_str());
+		else expr_id->type = variable->type;
 
 		break;
 	}
@@ -95,14 +97,14 @@ bool semantic::analyze_expr(ast::Expr* expr)
 	{
 		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(expr);
 
-		const bool declared = is_variable_declared(decl_or_assign->name);
+		const bool declared = get_declared_variable(decl_or_assign->name);
 
 		if (decl_or_assign->is_declaration())
 		{
 			if (declared)
 				add_error("'%s %s' redefinition", STRINGIFY_TYPE(decl_or_assign->type).c_str(), decl_or_assign->name.c_str());
 
-			add_variable(decl_or_assign->name);
+			add_variable(decl_or_assign);
 		}
 		else if (!declared)
 			add_error("'%s' identifier is undefined", decl_or_assign->name.c_str());
@@ -172,14 +174,15 @@ void semantic::add_prototype(const std::string& name)
 	gi.prototypes.insert(name);
 }
 
-void semantic::add_variable(const std::string& name)
+void semantic::add_variable(ast::ExprDeclOrAssign* expr)
 {
-	pi.values.insert(name);
+	pi.values.insert({ expr->name, expr });
 }
 
-bool semantic::is_variable_declared(const std::string& name)
+ast::ExprDeclOrAssign* semantic::get_declared_variable(const std::string& name)
 {
-	return (pi.values.find(name) != pi.values.end());
+	auto it = pi.values.find(name);
+	return (it != pi.values.end() ? it->second : nullptr);
 }
 
 ast::Prototype* semantic::get_prototype(const std::string& name)

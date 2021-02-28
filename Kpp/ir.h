@@ -36,7 +36,21 @@ namespace kpp
 			
 			Token get_type() override			{ return ty; };
 
+			//std::string get_value() override	{ return name; }
 			std::string get_value() override	{ return std::to_string(value.u64); }
+		};
+
+		struct ValueId : public Base
+		{
+			std::string name;
+
+			Token ty = TOKEN_NONE;
+
+			void print() override				{}
+
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return name; }
 		};
 
 		struct BinaryOp : public Base
@@ -85,6 +99,21 @@ namespace kpp
 			std::string get_value() override	{ return value; }
 		};
 
+		struct Load : public Base
+		{
+			std::string dest_value;
+
+			ir::ValueId* value = nullptr;
+
+			Token ty = TOKEN_NONE;
+
+			void print() override;
+
+			Token get_type() override			{ return ty; };
+
+			std::string get_value() override	{ return dest_value; }
+		};
+
 		struct PrototypeParam
 		{
 			std::string name;
@@ -97,7 +126,7 @@ namespace kpp
 		struct Prototype
 		{
 			std::unordered_map<std::string, Base*> values;
-			std::unordered_map<std::string, std::string> values_lookup;
+			std::unordered_map<std::string, Base*> values_real_name_lookup;
 
 			std::vector<PrototypeParam*> params;
 
@@ -128,7 +157,7 @@ namespace kpp
 			Prototype* curr_prototype = nullptr;
 
 			std::unordered_map<std::string, Base*> values;
-			std::unordered_map<std::string, std::string> values_lookup;
+			std::unordered_map<std::string, Base*> values_real_name_lookup;
 
 			std::vector<Base*> items;
 
@@ -142,14 +171,14 @@ namespace kpp
 				stack_size = aligned_stack_size = 0;
 
 				values.clear();
-				values_lookup.clear();
+				values_real_name_lookup.clear();
 				items.clear();
 			}
 
 			void copy_to_prototype(Prototype* prototype)
 			{
 				prototype->values = values;
-				prototype->values_lookup = values_lookup;
+				prototype->values_real_name_lookup = values_real_name_lookup;
 				prototype->items = items;
 				prototype->stack_size = stack_size;
 				prototype->aligned_stack_size = aligned_stack_size;
@@ -160,18 +189,18 @@ namespace kpp
 				items.push_back(base);
 			}
 
-			std::optional<std::string> get_value_from_name(const std::string& name)
+			Base* get_value_from_real_name(const std::string& name)
 			{
-				if (auto it = values_lookup.find(name); it != values_lookup.end())
+				if (auto it = values_real_name_lookup.find(name); it != values_real_name_lookup.end())
 					return it->second;
-				return {};
+				return nullptr;
 			}
 
 			std::string create_value(const std::string& name, ir::Base* item)
 			{
 				auto var_name = "v" + std::to_string(values.size());
 				values.insert({ var_name, item });
-				values_lookup.insert({ name, var_name });
+				values_real_name_lookup.insert({ name, item });
 				return var_name;
 			}
 		};
@@ -225,9 +254,7 @@ namespace kpp
 		ir::Base* generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
 		ir::ValueInt* generate_from_expr_int_literal(ast::ExprIntLiteral* expr);
 		ir::BinaryOp* generate_from_expr_binary_op(ast::ExprBinaryOp* expr);
-
-		/*
-		ir::ExprId* generate_expr_id(ast::ExprId* expr);*/
+		ir::Load* generate_from_expr_id(ast::ExprId* expr);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 

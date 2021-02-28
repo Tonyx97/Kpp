@@ -8,7 +8,7 @@ namespace kpp
 	{
 		ast::Prototype* curr_prototype = nullptr;
 
-		std::unordered_set<std::string> values;
+		std::unordered_map<std::string, ast::ExprDeclOrAssign*> values;
 
 		void clear()
 		{
@@ -50,9 +50,9 @@ namespace kpp
 
 		void add_prototype_decl(const std::string& name);
 		void add_prototype(const std::string& name);
-		void add_variable(const std::string& name);
+		void add_variable(ast::ExprDeclOrAssign* expr);
 
-		bool is_variable_declared(const std::string& name);
+		ast::ExprDeclOrAssign* get_declared_variable(const std::string& name);
 
 		ast::Prototype* get_prototype(const std::string& name);
 

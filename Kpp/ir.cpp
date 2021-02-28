@@ -16,6 +16,11 @@ namespace kpp::ir
 		PRINT_TABS_NL(C_WHITE, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value());
 	}
 
+	void Load::print()
+	{
+		PRINT_TABS_NL(C_WHITE, 1, dest_value + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + value->name);
+	}
+
 	void ValueInt::print()
 	{
 		//PRINT_TABS_NL(C_WHITE, 1, name + " = " + std::to_string(value.u64));
@@ -152,7 +157,7 @@ ir::Base* ir_gen::generate_from_expr(ast::Expr* expr)
 	case ast::EXPR_DECL_OR_ASSIGN: return generate_from_expr_decl_or_assign(static_cast<ast::ExprDeclOrAssign*>(expr));
 	case ast::EXPR_INT_LITERAL:	   return generate_from_expr_int_literal(static_cast<ast::ExprIntLiteral*>(expr));
 	case ast::EXPR_BINARY_OP:	   return generate_from_expr_binary_op(static_cast<ast::ExprBinaryOp*>(expr));
-	//case ast::EXPR_ID:		   return generate_expr_id(static_cast<ast::ExprId*>(expr));
+	case ast::EXPR_ID:			   return generate_from_expr_id(static_cast<ast::ExprId*>(expr));
 	}
 
 	return nullptr;
@@ -184,8 +189,19 @@ ir::Base* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
 	}
 	else
 	{
+		auto value_to_load = pi.get_value_from_real_name(expr->name);
+		if (!value_to_load)
+			return nullptr;
 
-		return nullptr;
+		auto store = new ir::Store();
+
+		store->value = value_to_load->get_value();
+		store->ty = value_to_load->get_type();
+		store->operand = generate_from_expr(expr->value);
+
+		pi.create_item(store);
+
+		return store;
 	}
 }
 
@@ -206,48 +222,37 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 {
 	auto binary_op = new ir::BinaryOp();
 
-	binary_op->value = pi.create_value(expr->base_name, binary_op);
 	binary_op->left = generate_from_expr(expr->left);
 	binary_op->op = expr->op;
 	binary_op->ty = expr->ty;
 	binary_op->right = generate_from_expr(expr->right);
+	binary_op->value = pi.create_value(expr->base_name, binary_op);
 
 	pi.create_item(binary_op);
 
 	return binary_op;
 }
 
-/*
-ir::ExprId* ir_gen::generate_expr_id(ast::ExprId* expr)
+ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 {
-	auto expr_id = ir::ExprId::create();
+	auto value_to_load = pi.get_value_from_real_name(expr->name);
+	if (!value_to_load)
+		return nullptr;
+	
+	auto load = new ir::Load();
 
-	if (auto var_name = pi.get_value_from_name(expr->name))
-		expr_id->var_name = *var_name;
-	else expr_id->var_name = pi.create_value(expr->name, expr_id);
+	auto value_id = new ir::ValueId();
 
-	return expr_id;
+	value_id->name = value_to_load->get_value();
+
+	load->value = value_id;
+	load->ty = expr->type;
+	load->dest_value = pi.create_value(expr->name, load);
+
+	pi.create_item(load);
+
+	return load;
 }
-
-ir::ExprBinaryOp* ir_gen::generate_expr_binary_op(ast::ExprBinaryOp* expr)
-{
-	ir::Expr* left = nullptr,
-			* right = nullptr;
-
-	if (expr->left)
-		left = generate_expr(expr->left);
-
-	if (expr->right)
-		right = generate_expr(expr->right);
-
-	auto expr_bin_op = ir::ExprBinaryOp::create(left, expr->op, right);
-
-	expr_bin_op->var_name = pi.create_value("binary_op", expr_bin_op);
-
-	pi.create_item(expr_bin_op);
-
-	return expr_bin_op;
-}*/
 
 ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)
 {
