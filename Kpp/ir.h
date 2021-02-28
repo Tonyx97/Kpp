@@ -37,7 +37,10 @@ namespace kpp
 			Token get_type() override			{ return ty; };
 
 			//std::string get_value() override	{ return name; }
-			std::string get_value() override	{ return std::to_string(value.u64); }
+			std::string get_value() override
+			{
+				return std::to_string(value.i64);
+			}
 		};
 
 		struct ValueId : public Base
@@ -215,6 +218,7 @@ namespace kpp
 		case TOKEN_MUL: return "mul";
 		case TOKEN_DIV: return "div";
 		case TOKEN_MOD: return "mod";
+		case TOKEN_XOR: return "xor";
 		}
 
 		return "unknown";

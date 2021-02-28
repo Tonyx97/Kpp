@@ -6,6 +6,14 @@
 #include "semantic.h"
 #include "ir.h"
 
+uint64_t upow(uint64_t val, uint64_t n)
+{
+	uint64_t res = val;
+	for (int i = 0; i < n; ++i)
+		res *= n;
+	return res;
+}
+
 int main(int argc, char** argv)
 {
 	PRINT(C_CYAN, "---------- LEXER (Lexic Analysis) ----------\n");

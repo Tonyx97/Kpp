@@ -189,7 +189,7 @@ namespace kpp
 	{
 		static inline std::regex SINGLE_COMMENT("\\/{2}.*$"),
 								 WORD("\\b[a-zA-Z]\\w*\\b"),
-								 INT_LITERAL("\\b[0-9]{1,20}((u|i)(8|16|32|64))?\\b");
+								 INT_LITERAL("(\\-)?[0-9]{1,20}((u|i)(8|16|32|64))?");
 	}
 
 	using opt_token_info = std::optional<token_info>;

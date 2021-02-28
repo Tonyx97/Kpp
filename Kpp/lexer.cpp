@@ -93,57 +93,52 @@ bool lexer::parse(const std::string& filename)
 
 			token_info curr_token {};
 			
-			for (const auto& token : static_tokens)
+			auto check_token_regex = [&](const std::regex& rgx, Token token_type)
 			{
-				if (!line.compare(0, token.value.length(), token.value))
+				if (std::regex_search(line, sm, rgx))
 				{
-					curr_token = token;
-					break;
+					if (auto token_found = sm.str(); line.find(token_found) == 0)
+					{
+						curr_token.value = token_found;
+
+						switch (token_type)
+						{
+						case TOKEN_ID:
+						{
+							if (auto it = keywords.find(token_found); it != keywords.end())
+								curr_token.id = it->second;
+							else if (auto it_decl = keywords_type.find(token_found); it_decl != keywords_type.end())
+								curr_token.id = it_decl->second;
+							else curr_token.id = token_type;
+
+							break;
+						}
+						case TOKEN_INT_LITERAL:
+						{
+							curr_token.id = token_type;
+							break;
+						}
+						}
+
+						return true;
+					}
 				}
-			}
+
+				return false;
+			};
+
+			if (!check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL))
+				for (const auto& token : static_tokens)
+				{
+					if (!line.compare(0, token.value.length(), token.value))
+					{
+						curr_token = token;
+						break;
+					}
+				}
 		
 			if (!curr_token)
-			{
-				auto check_token_regex = [&](const std::regex& rgx, Token token_type)
-				{
-					if (std::regex_search(line, sm, rgx))
-					{
-						if (auto token_found = sm.str(); line.find(token_found) == 0)
-						{
-							curr_token.value = token_found;
-
-							switch (token_type)
-							{
-							case TOKEN_ID:
-							{
-								if (auto it = keywords.find(token_found); it != keywords.end())
-									curr_token.id = it->second;
-								else if (auto it_decl = keywords_type.find(token_found); it_decl != keywords_type.end())
-									curr_token.id = it_decl->second;
-								else curr_token.id = token_type;
-
-								break;
-							}
-							case TOKEN_INT_LITERAL:
-							{
-								curr_token.id = token_type;
-								break;
-							}
-							}
-
-							return true;
-						}
-					}
-
-					return false;
-				};
-
-				// check if this token is a keyword, a keyword type or an identifier
-				// if it's not either, we check if it's a literal
-
-				if (!check_token_regex(regex::WORD, TOKEN_ID))
-					check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL);
-			}
+				check_token_regex(regex::WORD, TOKEN_ID);
 
 			if (curr_token)
 			{

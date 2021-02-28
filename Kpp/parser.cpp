@@ -261,7 +261,7 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		lex.eat();
 
-		return ast::ExprIntLiteral::create(Int::create(std::stoll(curr.value)), TOKEN_I32);	// we have to check for the real type
+		return ast::ExprIntLiteral::create(Int::create(std::stoull(curr.value)), TOKEN_I32);	// we have to check for the real type
 	}
 	else if (lex.is(curr, TOKEN_ID))
 	{

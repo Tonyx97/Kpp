@@ -8,17 +8,17 @@ namespace kpp::ir
 {
 	void StackAlloc::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 1, value + " = stackalloc " + STRINGIFY_TYPE(ty));
+		PRINT_TABS_NL(C_YELLOW, 1, value + " = stackalloc " + STRINGIFY_TYPE(ty));
 	}
 
 	void Store::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value());
+		PRINT_TABS_NL(C_RED, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value());
 	}
 
 	void Load::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 1, dest_value + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + value->name);
+		PRINT_TABS_NL(C_GREEN, 1, dest_value + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + value->name);
 	}
 
 	void ValueInt::print()
@@ -28,7 +28,7 @@ namespace kpp::ir
 
 	void BinaryOp::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 1, value + " = " + STRINGIFY_OP_IR(op) + " " + left->get_value() + ", " + right->get_value());
+		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_OP_IR(op) + " " + left->get_value() + ", " + right->get_value());
 	}
 }
 
