@@ -117,6 +117,19 @@ namespace kpp
 			std::string get_value() override	{ return dest_value; }
 		};
 
+		struct Block : public Base
+		{
+			std::vector<Base*> items;
+
+			std::string name;
+
+			void print() override;
+
+			Token get_type() override			{ return TOKEN_NONE; }
+
+			std::string get_value() override	{ return name; }
+		};
+
 		struct PrototypeParam
 		{
 			std::string name;
@@ -133,7 +146,7 @@ namespace kpp
 
 			std::vector<PrototypeParam*> params;
 
-			std::vector<Base*> items;
+			std::vector<Block*> blocks;
 
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
@@ -157,12 +170,14 @@ namespace kpp
 
 		struct PrototypeInfo
 		{
+			std::unordered_map<std::string, Base*> values,
+												   values_real_name_lookup;
+
+			std::unordered_map<std::string, Block*> blocks;
+
 			Prototype* curr_prototype = nullptr;
 
-			std::unordered_map<std::string, Base*> values;
-			std::unordered_map<std::string, Base*> values_real_name_lookup;
-
-			std::vector<Base*> items;
+			Block* curr_block = nullptr;
 
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
@@ -170,26 +185,26 @@ namespace kpp
 			void clear()
 			{
 				curr_prototype = nullptr;
+				curr_block = nullptr;
 
 				stack_size = aligned_stack_size = 0;
 
 				values.clear();
 				values_real_name_lookup.clear();
-				items.clear();
+				blocks.clear();
 			}
 
 			void copy_to_prototype(Prototype* prototype)
 			{
 				prototype->values = values;
 				prototype->values_real_name_lookup = values_real_name_lookup;
-				prototype->items = items;
 				prototype->stack_size = stack_size;
 				prototype->aligned_stack_size = aligned_stack_size;
 			}
 
 			void create_item(Base* base)
 			{
-				items.push_back(base);
+				curr_block->items.push_back(base);
 			}
 
 			Base* get_value_from_real_name(const std::string& name)
@@ -205,6 +220,21 @@ namespace kpp
 				values.insert({ var_name, item });
 				values_real_name_lookup.insert({ name, item });
 				return var_name;
+			}
+
+			void create_block()
+			{
+				auto new_block = new Block();
+
+				if (curr_block)
+					new_block->name = "block_" + std::to_string(blocks.size());
+				else new_block->name = "entry";
+
+				curr_block = new_block;
+
+				blocks.insert({ curr_block->name, curr_block });
+
+				curr_prototype->blocks.push_back(curr_block);
 			}
 		};
 	}
@@ -245,6 +275,7 @@ namespace kpp
 
 		void print_ir();
 		void print_prototype(ir::Prototype* prototype);
+		void print_block(ir::Block* block);
 		void print_item(ir::Base* base);
 
 		void add_prototype(ir::Prototype* prototype);
@@ -259,6 +290,7 @@ namespace kpp
 		ir::ValueInt* generate_from_expr_int_literal(ast::ExprIntLiteral* expr);
 		ir::BinaryOp* generate_from_expr_binary_op(ast::ExprBinaryOp* expr);
 		ir::Load* generate_from_expr_id(ast::ExprId* expr);
+		ir::Base* generate_from_if(ast::StmtIf* stmt_if);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 

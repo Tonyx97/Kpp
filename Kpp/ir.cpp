@@ -30,6 +30,11 @@ namespace kpp::ir
 	{
 		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_OP_IR(op) + " " + left->get_value() + ", " + right->get_value());
 	}
+
+	void Block::print()
+	{
+		PRINT_TABS_NL(C_WHITE, 0, name + ":");
+	}
 }
 
 ir_gen::ir_gen(ast::AST* tree) : tree(tree)
@@ -43,38 +48,42 @@ ir_gen::~ir_gen()
 void ir_gen::print_ir()
 {
 	for (auto&& prototype : iri.prototypes)
-	{
-		PRINT_NNL(C_WHITE, "%s %s(", STRINGIFY_TYPE(prototype->return_type).c_str(), prototype->name.c_str());
-
-		dbg::print_vec<ir::PrototypeParam>(C_WHITE, prototype->params, ", ", [](auto stmt)
-		{
-			return STRINGIFY_TYPE(stmt->type) + " " + stmt->name;
-		});
-
-		if (!prototype->items.empty())
-		{
-			PRINT(C_WHITE, ")");
-
-			print_prototype(prototype);
-		}
-		else PRINT(C_WHITE, ") {}");
-			
-		PRINT_NL;
-	}
+		print_prototype(prototype);
 }
 
 void ir_gen::print_prototype(ir::Prototype* prototype)
 {
-	PRINT_TABS_NL(C_WHITE, print_level, "{");
+	PRINT_NNL(C_WHITE, "%s %s(", STRINGIFY_TYPE(prototype->return_type).c_str(), prototype->name.c_str());
 
-	++print_level;
+	dbg::print_vec<ir::PrototypeParam>(C_WHITE, prototype->params, ", ", [](auto stmt)
+	{
+		return STRINGIFY_TYPE(stmt->type) + " " + stmt->name;
+	});
 
-	for (auto&& item : prototype->items)
+	if (!prototype->blocks.empty())
+	{
+		PRINT(C_WHITE, ")");
+
+		PRINT_TABS_NL(C_WHITE, print_level, "{");
+
+		print_level = 1;
+
+		for (auto&& block : prototype->blocks)
+			print_block(block);
+
+		print_level = 0;
+
+		PRINT_TABS_NL(C_WHITE, print_level, "}");
+	}
+	else PRINT(C_WHITE, ") {}");
+
+	PRINT_NL;
+}
+
+void ir_gen::print_block(ir::Block* block)
+{
+	for (auto&& item : block->items)
 		print_item(item);
-
-	--print_level;
-
-	PRINT_TABS_NL(C_WHITE, print_level, "}");
 }
 
 void ir_gen::print_item(ir::Base* base)
@@ -124,7 +133,11 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	}
 
 	if (prototype->body)
+	{
+		pi.create_block();
+
 		ir_prototype->body = generate_from_body(prototype->body);
+	}
 
 	add_prototype(ir_prototype);
 
@@ -144,6 +157,7 @@ ir::Body* ir_gen::generate_from_body(ast::StmtBody* body)
 		{
 		case ast::STMT_BODY: generate_from_body(reinterpret_cast<ast::StmtBody*>(stmt)); break;
 		case ast::STMT_EXPR: generate_from_expr(reinterpret_cast<ast::Expr*>(stmt));	 break;
+		case ast::STMT_IF:   generate_from_if(reinterpret_cast<ast::StmtIf*>(stmt));	 break;
 		}
 	}
 
@@ -252,6 +266,13 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 	pi.create_item(load);
 
 	return load;
+}
+
+ir::Base* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
+{
+	//pi.create_block();
+
+	return nullptr;
 }
 
 ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)
