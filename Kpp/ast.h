@@ -70,27 +70,29 @@ namespace kpp
 			
 			Token type;
 
-			ExprIntLiteral(Int value, Token type) : value(value), type(type)	{ expr_type = EXPR_INT_LITERAL; base_name = std::to_string(value.u64); }
-
-			static ExprIntLiteral* create(Int value, Token type)				{ return new ExprIntLiteral(value, type); }
+			ExprIntLiteral(Int value, Token type) : value(value), type(type)
+			{
+				expr_type = EXPR_INT_LITERAL;
+				base_name = std::to_string(value.u64);
+			}
 		};
 
 		struct ExprId : public Expr
 		{
 			std::string name;
 
-			ExprId(const std::string& name) : name(name)	{ expr_type = EXPR_ID; base_name = name; }
-
-			static ExprId* create(const std::string& value)	{ return new ExprId(value); }
+			ExprId(const std::string& name) : name(name)
+			{
+				expr_type = EXPR_ID;
+				base_name = name;
+			}
 		};
 
 		struct StmtBody : public StmtBase
 		{
 			std::vector<StmtBase*> stmts;
 
-			StmtBody()					{ stmt_type = STMT_BODY; }
-
-			static StmtBody* create()	{ return new StmtBody(); }
+			StmtBody()	{ stmt_type = STMT_BODY; }
 		};
 
 		struct StmtIf : public StmtBase
@@ -102,9 +104,7 @@ namespace kpp
 			StmtBody* if_body = nullptr,
 					* else_body = nullptr;
 
-			StmtIf(Expr* expr, StmtBody* if_body) : expr(expr), if_body(if_body)	{ stmt_type = STMT_IF; }
-
-			static StmtIf* create(Expr* expr, StmtBody* if_body)					{ return new StmtIf(expr, if_body); }
+			StmtIf(Expr* expr, StmtBody* if_body) : expr(expr), if_body(if_body) { stmt_type = STMT_IF; }
 		};
 
 		struct StmtFor : public StmtBase
@@ -117,9 +117,7 @@ namespace kpp
 			StmtBody* body = nullptr;
 
 			StmtFor(Expr* condition, StmtBase* init, StmtBase* step, StmtBody* body)
-					: condition(condition), init(init), step(step), body(body)						{ stmt_type = STMT_FOR; }
-
-			static StmtFor* create(Expr* condition, StmtBase* init, StmtBase* step, StmtBody* body)	{ return new StmtFor(condition, init, step, body); }
+					: condition(condition), init(init), step(step), body(body) { stmt_type = STMT_FOR; }
 		};
 
 		struct ExprDeclOrAssign : public Expr
@@ -130,11 +128,10 @@ namespace kpp
 
 			Token type = TOKEN_NONE;
 
-			ExprDeclOrAssign(const std::string& name, Expr* value, Token type) : name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; base_name = name; }
+			ExprDeclOrAssign(const std::string& name, Expr* value = nullptr, Token type = TOKEN_NONE) :
+				name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; base_name = name; }
 
 			bool is_declaration() const																					{ return (type != TOKEN_NONE); }
-
-			static ExprDeclOrAssign* create(const std::string& name, Expr* value = nullptr, Token type = TOKEN_NONE)	{ return new ExprDeclOrAssign(name, value, type); }
 		};
 
 		struct ExprBinaryOp : public Expr
@@ -147,8 +144,6 @@ namespace kpp
 			Expr* right = nullptr;
 
 			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) : left(left), op(op), ty(ty), right(right)	{ expr_type = EXPR_BINARY_OP; base_name = STRINGIFY_TOKEN(op); }
-
-			static ExprBinaryOp* create(Expr* left, Token op, Token ty, Expr* right)								{ return new ExprBinaryOp(left, op, ty, right); }
 		};
 
 		struct ExprCall : public Expr
@@ -158,8 +153,6 @@ namespace kpp
 			std::vector<Expr*> stmts;
 
 			ExprCall(const std::string& name) : name(name)		{ expr_type = EXPR_CALL; base_name = name; }
-
-			static ExprCall* create(const std::string& name)	{ return new ExprCall(name); }
 		};
 
 		struct Prototype
@@ -173,8 +166,6 @@ namespace kpp
 			Token return_type = TOKEN_NONE;
 
 			Prototype(const std::string& name) : name(name)		{}
-			
-			static Prototype* create(const std::string& name)	{ return new Prototype(name); }
 
 			bool is_declaration() const							{ return !body; }
 		};

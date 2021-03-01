@@ -19,7 +19,7 @@ namespace kpp
 
 			void print() override				{}
 
-			Token get_type() override			{ return TOKEN_NONE; };
+			Token get_type() override			{ return TOKEN_NONE; }
 
 			std::string get_value() override	{ return {}; }
 		};
@@ -34,7 +34,7 @@ namespace kpp
 
 			void print() override;
 			
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			//std::string get_value() override	{ return name; }
 			std::string get_value() override
@@ -51,7 +51,7 @@ namespace kpp
 
 			void print() override				{}
 
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			std::string get_value() override	{ return name; }
 		};
@@ -69,7 +69,7 @@ namespace kpp
 
 			void print() override;
 
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			std::string get_value() override	{ return value; }
 		};
@@ -82,7 +82,7 @@ namespace kpp
 
 			void print() override;
 			
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			std::string get_value() override	{ return value; }
 		};
@@ -97,7 +97,7 @@ namespace kpp
 
 			void print() override;
 			
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			std::string get_value() override	{ return value; }
 		};
@@ -112,7 +112,7 @@ namespace kpp
 
 			void print() override;
 
-			Token get_type() override			{ return ty; };
+			Token get_type() override			{ return ty; }
 
 			std::string get_value() override	{ return dest_value; }
 		};

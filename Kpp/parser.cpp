@@ -38,7 +38,7 @@ ast::Prototype* parser::parse_prototype()
 		{
 			if (auto paren_open = lex.eat_expect(TOKEN_PAREN_OPEN))
 			{
-				auto prototype = ast::Prototype::create(id->value);
+				auto prototype = new ast::Prototype(id->value);
 
 				prototype->params = parse_prototype_params_decl();
 				prototype->return_type = return_type->id;
@@ -83,7 +83,7 @@ std::vector<ast::StmtBase*> parser::parse_prototype_params_decl()
 		if (!param_id)
 			break;
 
-		stmts.push_back(ast::ExprDeclOrAssign::create(param_id->value, nullptr, param_type->id));
+		stmts.push_back(new ast::ExprDeclOrAssign(param_id->value, nullptr, param_type->id));
 
 		if (!lex.is_current(TOKEN_COMMA))
 			break;
@@ -122,7 +122,7 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 
 	lex.eat();
 
-	auto curr_body = ast::StmtBody::create();
+	auto curr_body = new ast::StmtBody();
 
 	while (!lex.eof())
 	{
@@ -156,10 +156,10 @@ ast::StmtBase* parser::parse_statement()
 			if (lex.is_current(TOKEN_ASSIGN))
 			{
 				lex.eat();
-				return ast::ExprDeclOrAssign::create(id->value, parse_expression(), type->id);
+				return new ast::ExprDeclOrAssign(id->value, parse_expression(), type->id);
 			}
 
-			return ast::ExprDeclOrAssign::create(id->value, nullptr, type->id);
+			return new ast::ExprDeclOrAssign(id->value, nullptr, type->id);
 		}
 		else printf_s("[%s] SYNTAX ERROR: Expected an identifier\n", __FUNCTION__);
 	}
@@ -173,7 +173,7 @@ ast::StmtBase* parser::parse_statement()
 
 			lex.eat_expect(TOKEN_PAREN_CLOSE);
 
-			auto if_stmt = ast::StmtIf::create(if_expr, parse_body(nullptr));
+			auto if_stmt = new ast::StmtIf(if_expr, parse_body(nullptr));
 
 			if (lex.is_current(TOKEN_ELSE))
 			{
@@ -189,7 +189,7 @@ ast::StmtBase* parser::parse_statement()
 
 						lex.eat_expect(TOKEN_PAREN_CLOSE);
 
-						if_stmt->ifs.push_back(ast::StmtIf::create(else_if_expr, parse_body(nullptr)));
+						if_stmt->ifs.push_back(new ast::StmtIf(else_if_expr, parse_body(nullptr)));
 
 					} while (!lex.eof() && lex.is_current(TOKEN_ELSE) && lex.is_next(TOKEN_IF));
 				}
@@ -212,7 +212,7 @@ ast::StmtBase* parser::parse_statement()
 			auto condition	= lex.is_current(TOKEN_SEMICOLON)	? nullptr : parse_expression();	lex.eat_expect(TOKEN_SEMICOLON);
 			auto step		= lex.is_current(TOKEN_PAREN_CLOSE) ? nullptr : parse_statement();	lex.eat_expect(TOKEN_PAREN_CLOSE);
 
-			return ast::StmtFor::create(condition, init, step, parse_body(nullptr));
+			return new ast::StmtFor(condition, init, step, parse_body(nullptr));
 		}
 	}
 	
@@ -249,7 +249,7 @@ ast::Expr* parser::parse_expression_precedence(ast::Expr* lhs, int min_precedenc
 			lookahead = lex.current();
 		}
 
-		lhs = ast::ExprBinaryOp::create(lhs, op.id, TOKEN_I32, rhs);	// we have to check for the real type
+		lhs = new ast::ExprBinaryOp(lhs, op.id, TOKEN_I32, rhs);	// we have to check for the real type
 	}
 
 	return lhs;
@@ -261,7 +261,7 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		lex.eat();
 
-		return ast::ExprIntLiteral::create(Int::create(std::stoull(curr.value)), TOKEN_I32);	// we have to check for the real type
+		return new ast::ExprIntLiteral(Int::create(std::stoull(curr.value)), TOKEN_I32);	// we have to check for the real type
 	}
 	else if (lex.is(curr, TOKEN_ID))
 	{
@@ -271,13 +271,13 @@ ast::Expr* parser::parse_primary_expression()
 		{
 			lex.eat();
 
-			return ast::ExprDeclOrAssign::create(id.value, parse_expression());
+			return new ast::ExprDeclOrAssign(id.value, parse_expression());
 		}
 		else if (lex.is_current(TOKEN_PAREN_OPEN))
 		{
 			lex.eat();
 
-			auto call = ast::ExprCall::create(curr.value);
+			auto call = new ast::ExprCall(curr.value);
 
 			call->stmts = parse_call_params();
 
@@ -286,7 +286,7 @@ ast::Expr* parser::parse_primary_expression()
 			return call;
 		}
 
-		return ast::ExprId::create(curr.value);
+		return new ast::ExprId(curr.value);
 	}
 
 	return nullptr;
