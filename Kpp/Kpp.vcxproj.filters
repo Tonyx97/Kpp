@@ -68,5 +68,8 @@
     <ClInclude Include="semantic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rtti.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

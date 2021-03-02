@@ -29,6 +29,7 @@
     <ClInclude Include="parser.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lexer.h" />
+    <ClInclude Include="rtti.h" />
     <ClInclude Include="semantic.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -22,4 +22,5 @@
 #include <optional>
 
 #include "debug.h"
+#include "rtti.h"
 #include "err_handler.h"

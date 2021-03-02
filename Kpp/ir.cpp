@@ -88,9 +88,9 @@ void ir_gen::print_block(ir::Block* block)
 		print_item(item);
 }
 
-void ir_gen::print_item(ir::Base* base)
+void ir_gen::print_item(ir::Instruction* item)
 {
-	base->print();
+	item->print();
 }
 
 void ir_gen::add_prototype(ir::Prototype* prototype)
@@ -131,7 +131,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	{
 		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(param);
 
-		ir_prototype->add_param(new ir::PrototypeParam(decl_or_assign->name, decl_or_assign->type));
+		ir_prototype->add_param(new ir::PrototypeParam(decl_or_assign->name, decl_or_assign->ty));
 	}
 
 	if (prototype->body)
@@ -155,38 +155,33 @@ ir::Body* ir_gen::generate_from_body(ast::StmtBody* body)
 
 	for (auto&& stmt : body->stmts)
 	{
-		switch (stmt->stmt_type)
-		{
-		case ast::STMT_BODY: generate_from_body(reinterpret_cast<ast::StmtBody*>(stmt)); break;
-		case ast::STMT_EXPR: generate_from_expr(reinterpret_cast<ast::Expr*>(stmt));	 break;
-		case ast::STMT_IF:   generate_from_if(reinterpret_cast<ast::StmtIf*>(stmt));	 break;
-		}
+		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))		generate_from_body(body);
+		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))		generate_from_expr(expr);
+		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt)) generate_from_if(stmt_if);
 	}
 
 	return ir_body;
 }
 
-ir::Base* ir_gen::generate_from_expr(ast::Expr* expr)
+ir::Instruction* ir_gen::generate_from_expr(ast::Expr* expr)
 {
-	switch (expr->expr_type)
-	{
-	case ast::EXPR_DECL_OR_ASSIGN: return generate_from_expr_decl_or_assign(static_cast<ast::ExprDeclOrAssign*>(expr));
-	case ast::EXPR_INT_LITERAL:	   return generate_from_expr_int_literal(static_cast<ast::ExprIntLiteral*>(expr));
-	case ast::EXPR_BINARY_OP:	   return generate_from_expr_binary_op(static_cast<ast::ExprBinaryOp*>(expr));
-	case ast::EXPR_ID:			   return generate_from_expr_id(static_cast<ast::ExprId*>(expr));
-	}
+	if (auto int_literal = rtti::safe_cast<ast::ExprIntLiteral>(expr))			 return generate_from_expr_int_literal(int_literal);
+	else if (auto id = rtti::safe_cast<ast::ExprId>(expr))						 return generate_from_expr_id(id);
+	else if (auto decl_or_assign = rtti::safe_cast<ast::ExprDeclOrAssign>(expr)) return generate_from_expr_decl_or_assign(decl_or_assign);
+	else if (auto binary_op = rtti::safe_cast<ast::ExprBinaryOp>(expr))			 return generate_from_expr_binary_op(binary_op);
+	/*else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))					 return generate_from_call(call);*/
 
 	return nullptr;
 }
 
-ir::Base* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
+ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr)
 {
 	if (expr->is_declaration())
 	{
 		auto stack_alloc = new ir::StackAlloc();
 
 		stack_alloc->value = pi.create_value(expr->name, stack_alloc);
-		stack_alloc->ty = expr->type;
+		stack_alloc->ty = expr->ty;
 
 		pi.create_item(stack_alloc);
 
@@ -226,8 +221,8 @@ ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
 	auto value_int = new ir::ValueInt();
 
 	value_int->value = expr->value;
-	value_int->ty = expr->type;
-	value_int->name = pi.create_value(expr->base_name, value_int);
+	value_int->ty = expr->ty;
+	value_int->name = pi.create_value(expr->get_name(), value_int);
 
 	pi.create_item(value_int);
 
@@ -242,7 +237,7 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 	binary_op->op = expr->op;
 	binary_op->ty = expr->ty;
 	binary_op->right = generate_from_expr(expr->right);
-	binary_op->value = pi.create_value(expr->base_name, binary_op);
+	binary_op->value = pi.create_value(expr->get_name(), binary_op);
 
 	pi.create_item(binary_op);
 
@@ -262,7 +257,7 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 	value_id->name = value_to_load->get_value();
 
 	load->value = value_id;
-	load->ty = expr->type;
+	load->ty = expr->ty;
 	load->dest_value = pi.create_value(expr->name, load);
 
 	pi.create_item(load);
@@ -270,7 +265,7 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 	return load;
 }
 
-ir::Base* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
+ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
 	//pi.create_block();
 

@@ -69,9 +69,9 @@ ast::Prototype* parser::parse_prototype()
 	return nullptr;
 }
 
-std::vector<ast::StmtBase*> parser::parse_prototype_params_decl()
+std::vector<ast::Base*> parser::parse_prototype_params_decl()
 {
-	std::vector<ast::StmtBase*> stmts;
+	std::vector<ast::Base*> stmts;
 
 	while (!lex.eof())
 	{
@@ -147,7 +147,7 @@ ast::StmtBody* parser::parse_body(ast::StmtBody* body)
 	return nullptr;
 }
 
-ast::StmtBase* parser::parse_statement()
+ast::Base* parser::parse_statement()
 {
 	if (auto type = parse_type())
 	{

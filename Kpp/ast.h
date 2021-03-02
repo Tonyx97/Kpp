@@ -29,111 +29,116 @@ namespace kpp
 
 	namespace ast
 	{
-		enum StmtType
+		enum Type
 		{
 			STMT_NONE,
 			STMT_EXPR,
+			  EXPR_INT_LITERAL,
+			  EXPR_ID,
+			  EXPR_DECL_OR_ASSIGN,
+			  EXPR_BINARY_OP,
+			  EXPR_CALL,
 			STMT_BODY,
 			STMT_IF,
 			STMT_FOR,
 		};
 
-		enum ExprType
+		/*
+		* Base
+		*/
+		struct Base
 		{
-			EXPR_NONE,
-			EXPR_INT_LITERAL,
-			EXPR_ID,
-			EXPR_DECL_OR_ASSIGN,
-			EXPR_BINARY_OP,
-			EXPR_CALL,
+			Type type = STMT_NONE;
 		};
 
-		struct StmtBase
+		/*
+		* Expr
+		*/
+		struct Expr : public Base
 		{
-			StmtType stmt_type = STMT_NONE;
+			//ExprType expr_type = EXPR_NONE;
+
+			Expr()	{ type = STMT_EXPR; }
+
+			virtual void set_ty(Token ty) = 0;
+
+			virtual Token get_ty() = 0;
+
+			virtual std::string get_name() = 0;
+
+			static bool check_class(Base* i) { return i->type >= STMT_EXPR && i->type <= EXPR_CALL; }
 		};
 
-		struct Expr : public StmtBase
-		{
-			std::string base_name;
-
-			ExprType expr_type = EXPR_NONE;
-
-			Token type = TOKEN_NONE;
-
-			Expr()	{ stmt_type = STMT_EXPR; }
-		};
-
+		/*
+		* ExprIntLiteral
+		*/
 		struct ExprIntLiteral : public Expr
 		{
 			Int value;
 			
-			Token type;
+			Token ty;
 
-			ExprIntLiteral(Int value, Token type) : value(value), type(type)
-			{
-				expr_type = EXPR_INT_LITERAL;
-				base_name = std::to_string(value.u64);
-			}
+			ExprIntLiteral(Int value, Token ty) : value(value), ty(ty)
+											 { type = EXPR_INT_LITERAL; }
+
+			void set_ty(Token ty)			 { this->ty = ty; }
+			
+			Token get_ty()					 { return ty; }
+
+			std::string get_name() override  { return std::to_string(value.u64); };
+
+			static bool check_class(Base* i) { return i->type == EXPR_INT_LITERAL; }
 		};
 
+		/*
+		* ExprId
+		*/
 		struct ExprId : public Expr
 		{
 			std::string name;
 
+			Token ty = TOKEN_NONE;
+
 			ExprId(const std::string& name) : name(name)
-			{
-				expr_type = EXPR_ID;
-				base_name = name;
-			}
+											 { type = EXPR_ID; }
+			
+			void set_ty(Token ty)			 { this->ty = ty; }
+			
+			Token get_ty()					 { return ty; }
+
+			std::string get_name() override  { return name; }
+
+			static bool check_class(Base* i) { return i->type == EXPR_ID; }
 		};
 
-		struct StmtBody : public StmtBase
-		{
-			std::vector<StmtBase*> stmts;
-
-			StmtBody()	{ stmt_type = STMT_BODY; }
-		};
-
-		struct StmtIf : public StmtBase
-		{
-			Expr* expr = nullptr;
-
-			std::vector<StmtIf*> ifs;
-
-			StmtBody* if_body = nullptr,
-					* else_body = nullptr;
-
-			StmtIf(Expr* expr, StmtBody* if_body) : expr(expr), if_body(if_body) { stmt_type = STMT_IF; }
-		};
-
-		struct StmtFor : public StmtBase
-		{
-			Expr* condition = nullptr;
-
-			StmtBase* init = nullptr,
-					* step = nullptr;
-
-			StmtBody* body = nullptr;
-
-			StmtFor(Expr* condition, StmtBase* init, StmtBase* step, StmtBody* body)
-					: condition(condition), init(init), step(step), body(body) { stmt_type = STMT_FOR; }
-		};
-
+		/*
+		* ExprDeclOrAssign
+		*/
 		struct ExprDeclOrAssign : public Expr
 		{
 			std::string name;
 
 			Expr* value = nullptr;
 
-			Token type = TOKEN_NONE;
+			Token ty = TOKEN_NONE;
 
-			ExprDeclOrAssign(const std::string& name, Expr* value = nullptr, Token type = TOKEN_NONE) :
-				name(name), value(value), type(type)	{ expr_type = EXPR_DECL_OR_ASSIGN; base_name = name; }
+			ExprDeclOrAssign(const std::string& name, Expr* value = nullptr, Token ty = TOKEN_NONE) :
+				name(name), value(value), ty(ty)		{ type = EXPR_DECL_OR_ASSIGN; }
 
-			bool is_declaration() const																					{ return (type != TOKEN_NONE); }
+			bool is_declaration() const					{ return (ty != TOKEN_NONE); }
+			
+			void set_ty(Token ty)						{ this->ty = ty; }
+			
+			Token get_ty()								{ return ty; }
+
+			std::string get_name() override				{ return name; }
+
+			static bool check_class(Base* i)			{ return i->type == EXPR_DECL_OR_ASSIGN; }
 		};
 
+		/*
+		* ExprBinaryOp
+		*/
 		struct ExprBinaryOp : public Expr
 		{
 			Expr* left = nullptr;
@@ -143,21 +148,93 @@ namespace kpp
 
 			Expr* right = nullptr;
 
-			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) : left(left), op(op), ty(ty), right(right)	{ expr_type = EXPR_BINARY_OP; base_name = STRINGIFY_TOKEN(op); }
+			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) :
+				left(left), op(op), ty(ty), right(right) { type = EXPR_BINARY_OP; }
+			
+			void set_ty(Token ty)						 { this->ty = ty; }
+			
+			Token get_ty()								 { return ty; }
+
+			std::string get_name() override				 { return STRINGIFY_TOKEN(op); };
+
+			static bool check_class(Base* i)			 { return i->type == EXPR_BINARY_OP; }
 		};
 
+		/*
+		* ExprCall
+		*/
 		struct ExprCall : public Expr
 		{
 			std::string name;
-			
+
 			std::vector<Expr*> stmts;
 
-			ExprCall(const std::string& name) : name(name)		{ expr_type = EXPR_CALL; base_name = name; }
+			ExprCall(const std::string& name) : name(name) { type = EXPR_CALL; }
+			
+			void set_ty(Token ty)						   {}
+			
+			Token get_ty()								   { return TOKEN_NONE; }
+
+			std::string get_name() override				   { return name; }
+
+			static bool check_class(Base* i)			   { return i->type == EXPR_CALL; }
 		};
 
+		/*
+		* StmtBody
+		*/
+		struct StmtBody : public Base
+		{
+			std::vector<Base*> stmts;
+
+			StmtBody()						 { type = STMT_BODY; }
+
+			static bool check_class(Base* i) { return i->type == STMT_BODY; }
+		};
+
+		/*
+		* StmtIf
+		*/
+		struct StmtIf : public Base
+		{
+			Expr* expr = nullptr;
+
+			std::vector<StmtIf*> ifs;
+
+			StmtBody* if_body = nullptr,
+					* else_body = nullptr;
+
+			StmtIf(Expr* expr, StmtBody* if_body) : expr(expr), if_body(if_body) 
+											 { type = STMT_IF; }
+			
+			static bool check_class(Base* i) { return i->type == STMT_IF; }
+		};
+
+		/*
+		* StmtFor
+		*/
+		struct StmtFor : public Base
+		{
+			Expr* condition = nullptr;
+
+			Base* init = nullptr,
+					* step = nullptr;
+
+			StmtBody* body = nullptr;
+
+			StmtFor(Expr* condition, Base* init, Base* step, StmtBody* body)
+					: condition(condition), init(init), step(step), body(body)
+											 { type = STMT_FOR; }
+
+			static bool check_class(Base* i) { return i->type == STMT_FOR; }
+		};
+
+		/*
+		* Prototype
+		*/
 		struct Prototype
 		{
-			std::vector<StmtBase*> params;
+			std::vector<Base*> params;
 
 			std::string name;
 
@@ -189,7 +266,7 @@ namespace kpp
 			void print(AST* tree);
 			void print_prototype(Prototype* prototype);
 			void print_body(ast::StmtBody* body);
-			void print_stmt(ast::StmtBase* stmt);
+			void print_stmt(ast::Base* stmt);
 			void print_if(ast::StmtIf* stmt_if);
 			void print_for(ast::StmtFor* stmt_for);
 			void print_expr(ast::Expr* expr);

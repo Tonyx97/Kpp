@@ -60,19 +60,8 @@ bool semantic::analyze_body(ast::StmtBody* body)
 {
 	for (auto&& stmt : body->stmts)
 	{
-		switch (stmt->stmt_type)
-		{
-		case ast::STMT_BODY:
-		{
-			analyze_body(static_cast<ast::StmtBody*>(stmt));
-			break;
-		}
-		case ast::STMT_EXPR:
-		{
-			analyze_expr(static_cast<ast::Expr*>(stmt));
-			break;
-		}
-		}
+		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))  analyze_body(body);
+		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt)) analyze_expr(expr);
 	}
 
 	return true;
@@ -80,29 +69,23 @@ bool semantic::analyze_body(ast::StmtBody* body)
 
 bool semantic::analyze_expr(ast::Expr* expr)
 {
-	switch (expr->expr_type)
-	{
-	case ast::EXPR_ID:
+	if (auto id = rtti::safe_cast<ast::ExprId>(expr))
 	{
 		auto expr_id = static_cast<ast::ExprId*>(expr);
 		auto variable = get_declared_variable(expr_id->name);
 
 		if (!variable)
 			add_error("'%s' identifier is undefined", expr_id->name.c_str());
-		else expr_id->type = variable->type;
-
-		break;
+		else expr_id->set_ty(variable->ty);
 	}
-	case ast::EXPR_DECL_OR_ASSIGN:
+	else if (auto decl_or_assign = rtti::safe_cast<ast::ExprDeclOrAssign>(expr))
 	{
-		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(expr);
-
 		const bool declared = get_declared_variable(decl_or_assign->name);
 
 		if (decl_or_assign->is_declaration())
 		{
 			if (declared)
-				add_error("'%s %s' redefinition", STRINGIFY_TYPE(decl_or_assign->type).c_str(), decl_or_assign->name.c_str());
+				add_error("'%s %s' redefinition", STRINGIFY_TYPE(decl_or_assign->ty).c_str(), decl_or_assign->name.c_str());
 
 			add_variable(decl_or_assign);
 		}
@@ -111,25 +94,19 @@ bool semantic::analyze_expr(ast::Expr* expr)
 
 		if (decl_or_assign->value)
 			analyze_expr(decl_or_assign->value);
-
-		break;
 	}
-	case ast::EXPR_BINARY_OP:
+	else if (auto binary_op = rtti::safe_cast<ast::ExprBinaryOp>(expr))
 	{
-		auto binary_op = static_cast<ast::ExprBinaryOp*>(expr);
-
 		if (binary_op->left)
 			analyze_expr(binary_op->left);
+		else add_error("Expected an expression");
 
 		if (binary_op->right)
 			analyze_expr(binary_op->right);
-
-		break;
+		else add_error("Expected an expression");
 	}
-	case ast::EXPR_CALL:
+	else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))
 	{
-		auto call = static_cast<ast::ExprCall*>(expr);
-
 		const auto& prototype_name = call->name;
 
 		auto prototype = get_prototype(prototype_name);
@@ -149,16 +126,13 @@ bool semantic::analyze_expr(ast::Expr* expr)
 			const auto& original_param = static_cast<ast::ExprDeclOrAssign*>(prototype->params[i]);
 			const auto& current_param = call->stmts[i];
 
-			if (original_param->type != current_param->type)
+			if (original_param->ty != current_param->get_ty())
 				add_error("Argument of type '%s' is incompatible with parameter of type '%s'",
-						  STRINGIFY_TYPE(current_param->type).c_str(),
-						  STRINGIFY_TYPE(original_param->type).c_str());
+						  STRINGIFY_TYPE(current_param->get_ty()).c_str(),
+						  STRINGIFY_TYPE(original_param->ty).c_str());
 		}
 
 		gi.prototype_calls.insert({ prototype_name, pi.curr_prototype->name });
-
-		break;
-	}
 	}
 
 	return true;

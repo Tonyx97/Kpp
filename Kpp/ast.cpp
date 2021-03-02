@@ -25,7 +25,7 @@ void ast::Printer::print_prototype(Prototype* prototype)
 
 		dbg::print_vec<ExprDeclOrAssign>(C_GREEN, prototype->params, ", ", [](ExprDeclOrAssign* e)
 		{
-			return STRINGIFY_TYPE(e->type) + " " + e->name;
+			return STRINGIFY_TYPE(e->ty) + " " + e->name;
 		});
 	}
 
@@ -58,23 +58,16 @@ void ast::Printer::print_body(StmtBody* body)
 	--curr_level;
 }
 
-void ast::Printer::print_stmt(StmtBase* stmt)
+void ast::Printer::print_stmt(Base* stmt)
 {
-	switch (stmt->stmt_type)
-	{
-	case STMT_BODY:
-		print_body(static_cast<StmtBody*>(stmt));
-		break;
-	case STMT_IF:
-		print_if(static_cast<StmtIf*>(stmt));
-		break;
-	case STMT_FOR:
-		print_for(static_cast<StmtFor*>(stmt));
-		break;
-	case STMT_EXPR:
-		print_expr(static_cast<Expr*>(stmt));
-		break;
-	}
+	if (auto body = rtti::safe_cast<StmtBody>(stmt))
+		print_body(body);
+	else if (auto stmt_if = rtti::safe_cast<StmtIf>(stmt))
+		print_if(stmt_if);
+	else if (auto stmt_for = rtti::safe_cast<StmtFor>(stmt))
+		print_for(stmt_for);
+	else if (auto expr = rtti::safe_cast<Expr>(stmt))
+		print_expr(expr);
 }
 
 void ast::Printer::print_if(StmtIf* stmt_if)
@@ -124,33 +117,25 @@ void ast::Printer::print_expr(Expr* expr)
 {
 	++curr_level;
 
-	switch (expr->expr_type)
-	{
-	case EXPR_INT_LITERAL:
-		print_expr_int(static_cast<ExprIntLiteral*>(expr));
-		break;
-	case EXPR_ID:
-		print_id(static_cast<ExprId*>(expr));
-		break;
-	case EXPR_DECL_OR_ASSIGN:
-		print_decl_or_assign(static_cast<ExprDeclOrAssign*>(expr));
-		break;
-	case EXPR_BINARY_OP:
-		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr));
-		break;
-	case EXPR_CALL:
-		print_expr_call(static_cast<ExprCall*>(expr));
-		break;
-	}
+	if (auto int_literal = rtti::safe_cast<ExprIntLiteral>(expr))
+		print_expr_int(int_literal);
+	else if (auto id = rtti::safe_cast<ExprId>(expr))
+		print_id(id);
+	else if (auto decl_or_assign = rtti::safe_cast<ExprDeclOrAssign>(expr))
+		print_decl_or_assign(decl_or_assign);
+	else if (auto binary_op = rtti::safe_cast<ExprBinaryOp>(expr))
+		print_expr_binary_op(binary_op);
+	else if (auto call = rtti::safe_cast<ExprCall>(expr))
+		print_expr_call(call);
 
 	--curr_level;
 }
 
 void ast::Printer::print_decl_or_assign(ExprDeclOrAssign* assign)
 {
-	if (assign->type != TOKEN_NONE)
+	if (assign->ty != TOKEN_NONE)
 	{
-		PRINT_TABS_NL(C_YELLOW, curr_level, "Declaration assignment '%s' (%s)", assign->name.c_str(), STRINGIFY_TYPE(assign->type).c_str());
+		PRINT_TABS_NL(C_YELLOW, curr_level, "Declaration assignment '%s' (%s)", assign->name.c_str(), STRINGIFY_TYPE(assign->ty).c_str());
 	}
 	else
 	{
@@ -170,7 +155,7 @@ void ast::Printer::print_decl_or_assign(ExprDeclOrAssign* assign)
 
 void ast::Printer::print_expr_int(ExprIntLiteral* expr)
 {
-	switch (expr->type)
+	switch (expr->ty)
 	{
 	case TOKEN_U8:  PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u8", expr->value.u8);   break;
 	case TOKEN_U16: PRINT_TABS_NL(C_YELLOW, curr_level, "Expr '%i' u16", expr->value.u16); break;
@@ -190,19 +175,21 @@ void ast::Printer::print_id(ast::ExprId* expr)
 
 void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
 {
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Binary Op (%s)", expr->base_name.c_str());
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Binary Op (%s)", expr->get_name().c_str());
 
 	++curr_level;
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->base_name.c_str());
+	if (expr->left)
+		PRINT_TABS_NL(C_YELLOW, curr_level, "Left operand '%s'", expr->left->get_name().c_str());
 
-	if (expr->left->expr_type == EXPR_BINARY_OP)
-		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->left));
+	if (auto left = rtti::safe_cast<ExprBinaryOp>(expr->left))
+		print_expr_binary_op(left);
 
-	PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->base_name.c_str());
+	if (expr->right)
+		PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->get_name().c_str());
 
-	if (expr->right->expr_type == EXPR_BINARY_OP)
-		print_expr_binary_op(static_cast<ExprBinaryOp*>(expr->right));
+	if (auto right = rtti::safe_cast<ExprBinaryOp>(expr->right))
+		print_expr_binary_op(right);
 
 	--curr_level;
 }
@@ -213,11 +200,11 @@ void ast::Printer::print_expr_call(ExprCall* expr)
 
 	for (auto&& param : expr->stmts)
 	{
-		if (param->expr_type == EXPR_CALL)
+		if (auto call = rtti::safe_cast<ExprCall>(param))
 		{
 			++curr_level;
 
-			print_expr_call(static_cast<ExprCall*>(param));
+			print_expr_call(call);
 
 			--curr_level;
 		}
