@@ -60,7 +60,7 @@ void ir_gen::print_prototype(ir::Prototype* prototype)
 		return STRINGIFY_TYPE(stmt->type) + " " + stmt->name;
 	});
 
-	if (!prototype->blocks.empty())
+	if (!prototype->is_empty())
 	{
 		PRINT(C_WHITE, ")");
 
@@ -82,6 +82,8 @@ void ir_gen::print_prototype(ir::Prototype* prototype)
 
 void ir_gen::print_block(ir::Block* block)
 {
+	block->print();
+
 	for (auto&& item : block->items)
 		print_item(item);
 }
@@ -129,7 +131,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	{
 		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(param);
 
-		ir_prototype->params.push_back(new ir::PrototypeParam(decl_or_assign->name, decl_or_assign->type));
+		ir_prototype->add_param(new ir::PrototypeParam(decl_or_assign->name, decl_or_assign->type));
 	}
 
 	if (prototype->body)

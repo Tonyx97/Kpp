@@ -128,6 +128,10 @@ namespace kpp
 			Token get_type() override			{ return TOKEN_NONE; }
 
 			std::string get_value() override	{ return name; }
+
+			bool is_empty() const				{ return items.empty(); }
+
+			void add_item(Base* item)			{ items.push_back(item); }
 		};
 
 		struct PrototypeParam
@@ -156,6 +160,11 @@ namespace kpp
 			Body* body = nullptr;
 
 			Token return_type = TOKEN_NONE;
+
+			bool is_empty() const					{ return blocks.empty(); }
+
+			void add_param(PrototypeParam* param)	{ params.push_back(param); }
+			void add_block(Block* block)			{ blocks.push_back(block); }
 		};
 
 		struct IR
@@ -204,14 +213,13 @@ namespace kpp
 
 			void create_item(Base* base)
 			{
-				curr_block->items.push_back(base);
+				curr_block->add_item(base);
 			}
 
 			Base* get_value_from_real_name(const std::string& name)
 			{
-				if (auto it = values_real_name_lookup.find(name); it != values_real_name_lookup.end())
-					return it->second;
-				return nullptr;
+				auto it = values_real_name_lookup.find(name);
+				return (it != values_real_name_lookup.end() ? it->second : nullptr);
 			}
 
 			std::string create_value(const std::string& name, ir::Base* item)
@@ -234,7 +242,7 @@ namespace kpp
 
 				blocks.insert({ curr_block->name, curr_block });
 
-				curr_prototype->blocks.push_back(curr_block);
+				curr_prototype->add_block(curr_block);
 			}
 		};
 	}
