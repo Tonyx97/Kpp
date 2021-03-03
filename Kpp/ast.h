@@ -37,6 +37,7 @@ namespace kpp
 			  EXPR_ID,
 			  EXPR_DECL_OR_ASSIGN,
 			  EXPR_BINARY_OP,
+			  EXPR_UNARY_OP,
 			  EXPR_CALL,
 			STMT_BODY,
 			STMT_IF,
@@ -161,6 +162,27 @@ namespace kpp
 		};
 
 		/*
+		* UnaryOp
+		*/
+		struct ExprUnaryOp : public Expr
+		{
+			Expr* value = nullptr;
+
+			Token op = TOKEN_NONE;
+
+			ExprUnaryOp(Token op, Expr* value) : op(op), value(value)
+											 { type = EXPR_UNARY_OP; }
+
+			void set_ty(Token ty)			 {}
+
+			Token get_ty()					 { return TOKEN_NONE; }
+
+			std::string get_name() override  { return STRINGIFY_TOKEN(op); };
+
+			static bool check_class(Base* i) { return i->type == EXPR_UNARY_OP; }
+		};
+
+		/*
 		* ExprCall
 		*/
 		struct ExprCall : public Expr
@@ -273,6 +295,7 @@ namespace kpp
 			void print_decl_or_assign(ast::ExprDeclOrAssign* assign);
 			void print_expr_int(ast::ExprIntLiteral* expr);
 			void print_id(ast::ExprId* expr);
+			void print_expr_unary_op(ast::ExprUnaryOp* expr);
 			void print_expr_binary_op(ast::ExprBinaryOp* expr);
 			void print_expr_call(ast::ExprCall* expr);
 		};

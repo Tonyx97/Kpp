@@ -173,6 +173,22 @@ void ast::Printer::print_id(ast::ExprId* expr)
 	PRINT_TABS_NL(C_YELLOW, curr_level, "Id '%s'", expr->name.c_str());
 }
 
+void ast::Printer::print_expr_unary_op(ast::ExprUnaryOp* expr)
+{
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Unary Op (%s)", expr->get_name().c_str());
+
+	++curr_level;
+
+	PRINT_TABS_NL(C_YELLOW, curr_level, "Value '%s'", expr->value->get_name().c_str());
+
+	if (auto value = rtti::safe_cast<ExprBinaryOp>(expr->value))
+		print_expr_binary_op(value);
+	else if (auto value_unary = rtti::safe_cast<ExprUnaryOp>(expr->value))
+		print_expr_unary_op(value_unary);
+
+	--curr_level;
+}
+
 void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
 {
 	PRINT_TABS_NL(C_YELLOW, curr_level, "Binary Op (%s)", expr->get_name().c_str());
@@ -184,12 +200,16 @@ void ast::Printer::print_expr_binary_op(ExprBinaryOp* expr)
 
 	if (auto left = rtti::safe_cast<ExprBinaryOp>(expr->left))
 		print_expr_binary_op(left);
+	else if (auto left_unary = rtti::safe_cast<ExprUnaryOp>(expr->left))
+		print_expr_unary_op(left_unary);
 
 	if (expr->right)
 		PRINT_TABS_NL(C_YELLOW, curr_level, "Right operand '%s'", expr->right->get_name().c_str());
 
 	if (auto right = rtti::safe_cast<ExprBinaryOp>(expr->right))
 		print_expr_binary_op(right);
+	else if (auto right_unary = rtti::safe_cast<ExprUnaryOp>(expr->right))
+		print_expr_unary_op(right_unary);
 
 	--curr_level;
 }

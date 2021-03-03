@@ -263,6 +263,12 @@ ast::Expr* parser::parse_primary_expression()
 
 		return new ast::ExprIntLiteral(Int::create(std::stoull(curr.value)), TOKEN_I32);	// we have to check for the real type
 	}
+	else if (lex.is(curr, TOKEN_SUB))
+	{
+		lex.eat();
+
+		return new ast::ExprUnaryOp(TOKEN_SUB, parse_primary_expression());
+	}
 	else if (lex.is(curr, TOKEN_ID))
 	{
 		auto id = lex.eat();
