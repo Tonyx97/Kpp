@@ -13,12 +13,17 @@ namespace kpp
 			INS_VALUE_INT,
 			INS_VALUE_ID,
 			INS_BINARY_OP,
+			INS_UNARY_OP,
 			INS_STACK_ALLOC,
 			INS_STORE,
 			INS_LOAD,
+			INS_COMPARE,
 			INS_BLOCK,
 		};
 		
+		/*
+		* Instruction
+		*/
 		struct Instruction
 		{
 			InsType type = INS_UNKNOWN;
@@ -27,7 +32,10 @@ namespace kpp
 			virtual Token get_type() = 0;
 			virtual std::string get_value() = 0;
 		};
-		
+
+		/*
+		* Body
+		*/
 		struct Body : public Instruction
 		{
 			Body()									{ type = INS_BODY; }
@@ -41,6 +49,9 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_BODY; }
 		};
 
+		/*
+		* ValueInt
+		*/
 		struct ValueInt : public Instruction
 		{
 			std::string name;
@@ -61,6 +72,9 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_VALUE_INT; }
 		};
 
+		/*
+		* ValueId
+		*/
 		struct ValueId : public Instruction
 		{
 			std::string name;
@@ -78,6 +92,9 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_VALUE_ID; }
 		};
 
+		/*
+		* BinaryOp
+		*/
 		struct BinaryOp : public Instruction
 		{
 			std::string value;
@@ -100,6 +117,31 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_BINARY_OP; }
 		};
 
+		/*
+		* UnaryOp
+		*/
+		struct UnaryOp : public Instruction
+		{
+			std::string value;
+
+			Instruction* operand = nullptr;
+
+			Token op = TOKEN_NONE;
+
+			UnaryOp()								{ type = INS_UNARY_OP; }
+
+			void print() override;
+
+			Token get_type() override				{ return op; }
+
+			std::string get_value() override		{ return value; }
+
+			static bool check_class(Instruction* i) { return i->type == INS_UNARY_OP; }
+		};
+
+		/*
+		* StackAlloc
+		*/
 		struct StackAlloc : public Instruction
 		{
 			std::string value;
@@ -117,6 +159,9 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_STACK_ALLOC; }
 		};
 
+		/*
+		* Store
+		*/
 		struct Store : public Instruction
 		{
 			std::string value;
@@ -136,11 +181,14 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_STORE; }
 		};
 
+		/*
+		* Load
+		*/
 		struct Load : public Instruction
 		{
 			std::string dest_value;
 
-			ir::ValueId* value = nullptr;
+			ValueId* value = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -155,6 +203,29 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_LOAD; }
 		};
 
+		/*
+		* Compare
+		*/
+		struct Compare : public Instruction
+		{
+			std::vector<Instruction*> items;
+
+			Token ty = TOKEN_NONE;
+
+			Compare()								{ type = INS_COMPARE; }
+
+			void print() override;
+
+			Token get_type() override				{ return ty; }
+
+			std::string get_value() override		{ return {}; }
+
+			static bool check_class(Instruction* i) { return i->type == INS_COMPARE; }
+		};
+
+		/*
+		* Block
+		*/
 		struct Block : public Instruction
 		{
 			std::vector<Instruction*> items;
@@ -264,7 +335,7 @@ namespace kpp
 				return (it != values_real_name_lookup.end() ? it->second : nullptr);
 			}
 
-			std::string create_value(const std::string& name, ir::Instruction* item)
+			std::string create_value(const std::string& name, Instruction* item)
 			{
 				auto var_name = "v" + std::to_string(values.size());
 				values.insert({ var_name, item });
@@ -272,7 +343,7 @@ namespace kpp
 				return var_name;
 			}
 
-			void create_block()
+			Block* create_block(bool add = false)
 			{
 				auto new_block = new Block();
 
@@ -280,25 +351,48 @@ namespace kpp
 					new_block->name = "block_" + std::to_string(blocks.size());
 				else new_block->name = "entry";
 
-				curr_block = new_block;
+				blocks.insert({ new_block->name, new_block });
 
-				blocks.insert({ curr_block->name, curr_block });
+				if (add)
+					add_block(new_block);
 
-				curr_prototype->add_block(curr_block);
+				return new_block;
+			}
+
+			void add_block(Block* block)
+			{
+				curr_prototype->add_block(curr_block = block);
 			}
 		};
 	}
 
-	inline std::string STRINGIFY_OP_IR(Token op)
+	inline std::string STRINGIFY_BINARY_OP(Token op)
 	{
 		switch (op)
 		{
-		case TOKEN_ADD: return "add";
-		case TOKEN_SUB: return "sub";
-		case TOKEN_MUL: return "mul";
-		case TOKEN_DIV: return "div";
-		case TOKEN_MOD: return "mod";
-		case TOKEN_XOR: return "xor";
+		case TOKEN_ADD:			return "add";
+		case TOKEN_SUB:			return "sub";
+		case TOKEN_MUL:			return "mul";
+		case TOKEN_DIV:			return "div";
+		case TOKEN_MOD:			return "mod";
+		case TOKEN_XOR:			return "xor";
+		case TOKEN_EQUAL:		return "equal";
+		case TOKEN_NOT_EQUAL:	return "not equal";
+		}
+
+		return "unknown";
+	}
+
+	inline std::string STRINGIFY_UNARY_OP(Token op)
+	{
+		switch (op)
+		{
+		case TOKEN_ADD:		 return "+";
+		case TOKEN_SUB:		 return "neg";
+		case TOKEN_MUL:		 return "deref";
+		case TOKEN_AND:		 return "address";
+		case TOKEN_BOOL_NOT: return "bool not";
+		case TOKEN_NOT:		 return "logical not";
 		}
 
 		return "unknown";
@@ -339,6 +433,7 @@ namespace kpp
 		ir::Instruction* generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
 		ir::ValueInt* generate_from_expr_int_literal(ast::ExprIntLiteral* expr);
 		ir::BinaryOp* generate_from_expr_binary_op(ast::ExprBinaryOp* expr);
+		ir::UnaryOp* generate_from_expr_unary_op(ast::ExprUnaryOp* expr);
 		ir::Load* generate_from_expr_id(ast::ExprId* expr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
 

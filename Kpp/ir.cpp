@@ -28,7 +28,21 @@ namespace kpp::ir
 
 	void BinaryOp::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_OP_IR(op) + " " + left->get_value() + ", " + right->get_value());
+		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_BINARY_OP(op) + " " + left->get_value() + ", " + right->get_value());
+	}
+
+	void UnaryOp::print()
+	{
+		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_UNARY_OP(op) + " " + operand->get_value());
+	}
+
+	void Compare::print()
+	{
+		for (auto&& compare : items)
+		{
+			compare->print();
+			//PRINT_TABS_NL(C_CYAN, 1, "cmp " + compare->get_value());
+		}
 	}
 
 	void Block::print()
@@ -136,7 +150,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 
 	if (prototype->body)
 	{
-		pi.create_block();
+		pi.create_block(true);
 
 		ir_prototype->body = generate_from_body(prototype->body);
 	}
@@ -169,6 +183,7 @@ ir::Instruction* ir_gen::generate_from_expr(ast::Expr* expr)
 	else if (auto id = rtti::safe_cast<ast::ExprId>(expr))						 return generate_from_expr_id(id);
 	else if (auto decl_or_assign = rtti::safe_cast<ast::ExprDeclOrAssign>(expr)) return generate_from_expr_decl_or_assign(decl_or_assign);
 	else if (auto binary_op = rtti::safe_cast<ast::ExprBinaryOp>(expr))			 return generate_from_expr_binary_op(binary_op);
+	else if (auto unary_op = rtti::safe_cast<ast::ExprUnaryOp>(expr))			 return generate_from_expr_unary_op(unary_op);
 	/*else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))					 return generate_from_call(call);*/
 
 	return nullptr;
@@ -244,6 +259,19 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 	return binary_op;
 }
 
+ir::UnaryOp* ir_gen::generate_from_expr_unary_op(ast::ExprUnaryOp* expr)
+{
+	auto unary_op = new ir::UnaryOp();
+
+	pi.create_item(unary_op);
+
+	unary_op->operand = generate_from_expr(expr->value);
+	unary_op->op = expr->op;
+	unary_op->value = pi.create_value(expr->get_name(), unary_op);
+
+	return unary_op;
+}
+
 ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 {
 	auto value_to_load = pi.get_value_from_real_name(expr->name);
@@ -267,9 +295,38 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
-	//pi.create_block();
+	auto compare = new ir::Compare();
 
-	return nullptr;
+	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
+	{
+		//compare->items.push_back(generate_from_expr_binary_op(bin_op));
+	}
+
+	pi.create_item(compare);
+
+	auto if_block = pi.create_block(),
+		 else_end_block = pi.create_block();
+
+	if (stmt_if->if_body)
+	{
+		pi.add_block(if_block);
+		generate_from_body(stmt_if->if_body);
+	}
+
+	for (auto&& else_if : stmt_if->ifs)
+	{
+		pi.create_block(true);
+		generate_from_body(else_if->if_body);
+	}
+
+	pi.add_block(else_end_block);
+
+	if (stmt_if->else_body)
+		generate_from_body(stmt_if->else_body);
+
+	pi.create_block(true);
+
+	return compare;
 }
 
 ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)

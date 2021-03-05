@@ -175,7 +175,7 @@ namespace kpp
 
 			void set_ty(Token ty)			 {}
 
-			Token get_ty()					 { return TOKEN_NONE; }
+			Token get_ty()					 { return op; }
 
 			std::string get_name() override  { return STRINGIFY_TOKEN(op); };
 

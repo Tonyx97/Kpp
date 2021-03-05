@@ -257,19 +257,24 @@ ast::Expr* parser::parse_expression_precedence(ast::Expr* lhs, int min_precedenc
 
 ast::Expr* parser::parse_primary_expression()
 {
-	if (auto curr = lex.current(); lex.is(curr, TOKEN_INT_LITERAL))
+	auto curr = lex.current();
+
+	if (lex.is_current(TOKEN_INT_LITERAL))
 	{
 		lex.eat();
 
 		return new ast::ExprIntLiteral(Int::create(std::stoull(curr.value)), TOKEN_I32);	// we have to check for the real type
 	}
-	else if (lex.is(curr, TOKEN_SUB))
+	else if (lex.is_current(TOKEN_SUB) ||
+			 lex.is_current(TOKEN_MUL) ||
+			 lex.is_current(TOKEN_AND) ||
+			 lex.is_current(TOKEN_BOOL_NOT))
 	{
 		lex.eat();
 
-		return new ast::ExprUnaryOp(TOKEN_SUB, parse_primary_expression());
+		return new ast::ExprUnaryOp(curr.id, parse_primary_expression());
 	}
-	else if (lex.is(curr, TOKEN_ID))
+	else if (lex.is_current(TOKEN_ID))
 	{
 		auto id = lex.eat();
 

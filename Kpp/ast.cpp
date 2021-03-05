@@ -125,6 +125,8 @@ void ast::Printer::print_expr(Expr* expr)
 		print_decl_or_assign(decl_or_assign);
 	else if (auto binary_op = rtti::safe_cast<ExprBinaryOp>(expr))
 		print_expr_binary_op(binary_op);
+	else if (auto unary_op = rtti::safe_cast<ExprUnaryOp>(expr))
+		print_expr_unary_op(unary_op);
 	else if (auto call = rtti::safe_cast<ExprCall>(expr))
 		print_expr_call(call);
 

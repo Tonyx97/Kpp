@@ -60,8 +60,9 @@ bool semantic::analyze_body(ast::StmtBody* body)
 {
 	for (auto&& stmt : body->stmts)
 	{
-		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))  analyze_body(body);
-		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt)) analyze_expr(expr);
+		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))		analyze_body(body);
+		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))		analyze_expr(expr);
+		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt)) analyze_if(stmt_if);
 	}
 
 	return true;
@@ -71,25 +72,24 @@ bool semantic::analyze_expr(ast::Expr* expr)
 {
 	if (auto id = rtti::safe_cast<ast::ExprId>(expr))
 	{
-		auto expr_id = static_cast<ast::ExprId*>(expr);
-		auto variable = get_declared_variable(expr_id->name);
+		auto variable = get_declared_variable(id->name);
 
 		if (!variable)
-			add_error("'%s' identifier is undefined", expr_id->name.c_str());
-		else expr_id->set_ty(variable->ty);
+			add_error("'%s' identifier is undefined", id->name.c_str());
+		else id->set_ty(variable->ty);
 	}
 	else if (auto decl_or_assign = rtti::safe_cast<ast::ExprDeclOrAssign>(expr))
 	{
-		const bool declared = get_declared_variable(decl_or_assign->name);
+		auto declared_var = get_declared_variable(decl_or_assign->name);
 
 		if (decl_or_assign->is_declaration())
 		{
-			if (declared)
+			if (declared_var)
 				add_error("'%s %s' redefinition", STRINGIFY_TYPE(decl_or_assign->ty).c_str(), decl_or_assign->name.c_str());
 
 			add_variable(decl_or_assign);
 		}
-		else if (!declared)
+		else if (!declared_var)
 			add_error("'%s' identifier is undefined", decl_or_assign->name.c_str());
 
 		if (decl_or_assign->value)
@@ -104,6 +104,16 @@ bool semantic::analyze_expr(ast::Expr* expr)
 		if (binary_op->right)
 			analyze_expr(binary_op->right);
 		else add_error("Expected an expression");
+	}
+	else if (auto unary_op = rtti::safe_cast<ast::ExprUnaryOp>(expr))
+	{
+		if (auto value_unary_op = rtti::safe_cast<ast::ExprUnaryOp>(unary_op->value))
+			analyze_expr(value_unary_op);
+		else
+		{
+			if (!rtti::safe_cast<ast::ExprId>(unary_op->value))
+				add_error("Expression must be an lvalue");
+		}
 	}
 	else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))
 	{
@@ -134,6 +144,34 @@ bool semantic::analyze_expr(ast::Expr* expr)
 
 		gi.prototype_calls.insert({ prototype_name, pi.curr_prototype->name });
 	}
+
+	return true;
+}
+
+bool semantic::analyze_if(ast::StmtIf* stmt_if)
+{
+	auto internal_analyze_if = [&](ast::StmtIf* curr_if)
+	{
+		if (!analyze_expr(curr_if->expr))
+			return false;
+
+		if (curr_if->if_body)
+			if (!analyze_body(curr_if->if_body))
+				return false;
+
+		if (curr_if->else_body)
+			if (!analyze_body(curr_if->else_body))
+				return false;
+
+		return true;
+	};
+
+	if (!internal_analyze_if(stmt_if))
+		return false;
+
+	for (auto&& else_if : stmt_if->ifs)
+		if (!internal_analyze_if(else_if))
+			return false;
 
 	return true;
 }
