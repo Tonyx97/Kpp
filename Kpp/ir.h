@@ -19,6 +19,8 @@ namespace kpp
 			INS_LOAD,
 			INS_COMPARE,
 			INS_BLOCK,
+			INS_BRANCH,
+			INS_RETURN,
 		};
 		
 		/*
@@ -247,6 +249,42 @@ namespace kpp
 			static bool check_class(Instruction* i) { return i->type == INS_BLOCK; }
 		};
 
+		/*
+		* Branch
+		*/
+		struct Branch : public Instruction
+		{
+			Block* target = nullptr;
+
+			Branch()								{ type = INS_BRANCH; }
+
+			void print() override;
+
+			Token get_type() override				{ return target->get_type(); }
+
+			std::string get_value() override		{ return target->get_value(); }
+
+			static bool check_class(Instruction* i) { return i->type == INS_BRANCH; }
+		};
+
+		/*
+		* Return
+		*/
+		struct Return : public Instruction
+		{
+			Token ty = TOKEN_NONE;
+
+			Return()								{ type = INS_RETURN; }
+
+			void print() override;
+
+			Token get_type() override				{ return ty; }
+
+			std::string get_value() override		{ return STRINGIFY_TYPE(ty); }
+
+			static bool check_class(Instruction* i) { return i->type == INS_RETURN; }
+		};
+
 		struct PrototypeParam
 		{
 			std::string name;
@@ -272,12 +310,17 @@ namespace kpp
 
 			Body* body = nullptr;
 
-			Token return_type = TOKEN_NONE;
+			Token ret_ty = TOKEN_NONE;
 
 			bool is_empty() const					{ return blocks.empty(); }
 
 			void add_param(PrototypeParam* param)	{ params.push_back(param); }
 			void add_block(Block* block)			{ blocks.push_back(block); }
+			void remove_block(Block* block)
+			{
+				if (auto it = std::find(blocks.begin(), blocks.end(), block); it != blocks.end())
+					blocks.erase(it);
+			}
 		};
 
 		struct IR
@@ -293,7 +336,7 @@ namespace kpp
 		struct PrototypeInfo
 		{
 			std::unordered_map<std::string, Instruction*> values,
-												   values_real_name_lookup;
+														  values_real_name_lookup;
 
 			std::unordered_map<std::string, Block*> blocks;
 
@@ -359,9 +402,39 @@ namespace kpp
 				return new_block;
 			}
 
+			void destroy_block(Block* block)
+			{
+				if (!block)
+					return;
+
+				curr_prototype->remove_block(block);
+
+				delete block;
+			}
+
 			void add_block(Block* block)
 			{
 				curr_prototype->add_block(curr_block = block);
+			}
+
+			Branch* create_branch()
+			{
+				auto branch = new Branch();
+
+				create_item(branch);
+
+				return branch;
+			}
+
+			Return* create_return(Token ty)
+			{
+				auto ret = new Return();
+
+				ret->ty = ty;
+
+				create_item(ret);
+
+				return ret;
 			}
 		};
 	}
@@ -391,8 +464,8 @@ namespace kpp
 		case TOKEN_SUB:		 return "neg";
 		case TOKEN_MUL:		 return "deref";
 		case TOKEN_AND:		 return "address";
-		case TOKEN_BOOL_NOT: return "bool not";
-		case TOKEN_NOT:		 return "logical not";
+		case TOKEN_NOT: return "bool not";
+		case TOKEN_BIT_NOT:		 return "logical not";
 		}
 
 		return "unknown";

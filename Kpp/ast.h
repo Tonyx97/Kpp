@@ -262,7 +262,7 @@ namespace kpp
 
 			StmtBody* body = nullptr;
 
-			Token return_type = TOKEN_NONE;
+			Token ret_ty = TOKEN_NONE;
 
 			Prototype(const std::string& name) : name(name)		{}
 

@@ -44,8 +44,8 @@ namespace kpp
 		TOKEN_AND,
 		TOKEN_OR,
 		TOKEN_XOR,
+		TOKEN_BIT_NOT,
 		TOKEN_NOT,
-		TOKEN_BOOL_NOT,
 		TOKEN_ASSIGN,
 
 		TOKEN_LOGICAL_AND,
@@ -178,8 +178,8 @@ namespace kpp
 		{ "&", TOKEN_AND, 8, 0, true },
 		{ "|", TOKEN_OR, 10, 0, true },
 		{ "^", TOKEN_XOR, 9, 0, true },
-		{ "~", TOKEN_NOT, 2, 0, true },
-		{ "!", TOKEN_BOOL_NOT, 2, 0, true },
+		{ "~", TOKEN_BIT_NOT, 2, 0, true },
+		{ "!", TOKEN_NOT, 2, 0, true },
 		{ "=", TOKEN_ASSIGN, 14, 0, true },
 		{ ">", TOKEN_GT, 6, 0, true },
 		{ "<", TOKEN_LT, 6, 0, true },
@@ -239,7 +239,8 @@ namespace kpp
 		case TOKEN_OR:					return "TOKEN_OR";
 		case TOKEN_LOGICAL_OR:			return "TOKEN_LOGICAL_OR";
 		case TOKEN_XOR:					return "TOKEN_XOR";
-		case TOKEN_BOOL_NOT:					return "TOKEN_NOT";
+		case TOKEN_BIT_NOT:				return "TOKEN_BIT_NOT";
+		case TOKEN_NOT:					return "TOKEN_NOT";
 		case TOKEN_ASSIGN:				return "TOKEN_ASSIGN";
 		case TOKEN_EQUAL:				return "TOKEN_EQUAL";
 		case TOKEN_NOT_EQUAL:			return "TOKEN_NOT_EQUAL";

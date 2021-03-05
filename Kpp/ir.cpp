@@ -49,6 +49,16 @@ namespace kpp::ir
 	{
 		PRINT_TABS_NL(C_WHITE, 0, name + ":");
 	}
+
+	void Branch::print()
+	{
+		PRINT_TABS_NL(C_BLUE, 1, "branch " + target->get_value());
+	}
+
+	void Return::print()
+	{
+		PRINT_TABS_NL(C_BLUE, 1, "ret " + get_value());
+	}
 }
 
 ir_gen::ir_gen(ast::AST* tree) : tree(tree)
@@ -67,7 +77,7 @@ void ir_gen::print_ir()
 
 void ir_gen::print_prototype(ir::Prototype* prototype)
 {
-	PRINT_NNL(C_WHITE, "%s %s(", STRINGIFY_TYPE(prototype->return_type).c_str(), prototype->name.c_str());
+	PRINT_NNL(C_WHITE, "%s %s(", STRINGIFY_TYPE(prototype->ret_ty).c_str(), prototype->name.c_str());
 
 	dbg::print_vec<ir::PrototypeParam>(C_WHITE, prototype->params, ", ", [](auto stmt)
 	{
@@ -139,7 +149,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	auto ir_prototype = pi.curr_prototype = new ir::Prototype();
 
 	ir_prototype->name = prototype->name;
-	ir_prototype->return_type = prototype->return_type;
+	ir_prototype->ret_ty = prototype->ret_ty;
 
 	for (auto&& param : prototype->params)
 	{
@@ -153,6 +163,8 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 		pi.create_block(true);
 
 		ir_prototype->body = generate_from_body(prototype->body);
+
+		pi.create_return(ir_prototype->ret_ty);
 	}
 
 	add_prototype(ir_prototype);
@@ -295,6 +307,17 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
+	auto add_branch = [&](ir::Block* target)
+	{
+		auto branch = pi.create_branch();
+		if (!branch)
+			return false;
+			
+		branch->target = target;
+
+		return true;
+	};
+
 	auto compare = new ir::Compare();
 
 	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
@@ -305,26 +328,33 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 	pi.create_item(compare);
 
 	auto if_block = pi.create_block(),
-		 else_end_block = pi.create_block();
+		 else_block = pi.create_block(),
+		 end_block = pi.create_block();
 
 	if (stmt_if->if_body)
 	{
 		pi.add_block(if_block);
 		generate_from_body(stmt_if->if_body);
+		add_branch(end_block);
 	}
+	else pi.destroy_block(if_block);
 
 	for (auto&& else_if : stmt_if->ifs)
 	{
 		pi.create_block(true);
 		generate_from_body(else_if->if_body);
+		add_branch(end_block);
 	}
 
-	pi.add_block(else_end_block);
-
 	if (stmt_if->else_body)
+	{
+		pi.add_block(else_block);
 		generate_from_body(stmt_if->else_body);
+		add_branch(end_block);
+	}
+	else pi.destroy_block(else_block);
 
-	pi.create_block(true);
+	pi.add_block(end_block);
 
 	return compare;
 }

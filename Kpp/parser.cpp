@@ -32,7 +32,7 @@ bool parser::parse()
 
 ast::Prototype* parser::parse_prototype()
 {
-	if (auto return_type = lex.eat_expect_keyword_declaration())
+	if (auto ret_ty = lex.eat_expect_keyword_declaration())
 	{
 		if (auto id = lex.eat_expect(TOKEN_ID))
 		{
@@ -41,7 +41,7 @@ ast::Prototype* parser::parse_prototype()
 				auto prototype = new ast::Prototype(id->value);
 
 				prototype->params = parse_prototype_params_decl();
-				prototype->return_type = return_type->id;
+				prototype->ret_ty = ret_ty->id;
 
 				if (auto paren_close = lex.eat_expect(TOKEN_PAREN_CLOSE))
 				{
@@ -268,7 +268,7 @@ ast::Expr* parser::parse_primary_expression()
 	else if (lex.is_current(TOKEN_SUB) ||
 			 lex.is_current(TOKEN_MUL) ||
 			 lex.is_current(TOKEN_AND) ||
-			 lex.is_current(TOKEN_BOOL_NOT))
+			 lex.is_current(TOKEN_NOT))
 	{
 		lex.eat();
 
