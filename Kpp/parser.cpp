@@ -268,7 +268,7 @@ ast::Expr* parser::parse_primary_expression()
 	else if (lex.is_current(TOKEN_SUB) ||
 			 lex.is_current(TOKEN_MUL) ||
 			 lex.is_current(TOKEN_AND) ||
-			 lex.is_current(TOKEN_NOT))
+			 lex.is_current(TOKEN_LOGICAL_NOT))
 	{
 		lex.eat();
 

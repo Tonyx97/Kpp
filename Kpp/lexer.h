@@ -44,10 +44,10 @@ namespace kpp
 		TOKEN_AND,
 		TOKEN_OR,
 		TOKEN_XOR,
-		TOKEN_BIT_NOT,
 		TOKEN_NOT,
 		TOKEN_ASSIGN,
 
+		TOKEN_LOGICAL_NOT,
 		TOKEN_LOGICAL_AND,
 		TOKEN_LOGICAL_OR,
 
@@ -143,46 +143,46 @@ namespace kpp
 		{ ">>=", TOKEN_SHR_ASSIGN, 14, 0, true },
 		{ "<<=", TOKEN_SHL_ASSIGN, 14, 0, true },
 
-		{ "==", TOKEN_EQUAL, 7, 0, true },
-		{ "!=", TOKEN_NOT_EQUAL, 7, 0, true },
-		{ ">=", TOKEN_GTE, 6, 0, true },
-		{ "<=", TOKEN_LTE, 6, 0, true },
-		{ "+=", TOKEN_ADD_ASSIGN, 14, 0, true },
-		{ "-=", TOKEN_SUB_ASSIGN, 14, 0, true },
-		{ "++", TOKEN_INC, 1, 0, true },
-		{ "--", TOKEN_DEC, 1, 0, true },
-		{ "*=", TOKEN_MUL_ASSIGN, 14, 0, true },
-		{ "%=", TOKEN_MOD_ASSIGN, 14, 0, true },
-		{ "/=", TOKEN_DIV_ASSIGN, 14, 0, true },
-		{ "&=", TOKEN_AND_ASSIGN, 14, 0, true },
-		{ "|=", TOKEN_OR_ASSIGN, 14, 0, true },
-		{ "^=", TOKEN_XOR_ASSIGN, 14, 0, true },
-		{ "&&", TOKEN_LOGICAL_AND, 11,0,  true },
-		{ "||", TOKEN_LOGICAL_OR, 12,0,  true },
-		{ ">>", TOKEN_SHR, 5, 0, true },
-		{ "<<", TOKEN_SHL, 5, 0, true },
+		{ "==", TOKEN_EQUAL,		7, 0, true },
+		{ "!=", TOKEN_NOT_EQUAL,	7, 0, true },
+		{ ">=", TOKEN_GTE,			6, 0, true },
+		{ "<=", TOKEN_LTE,			6, 0, true },
+		{ "+=", TOKEN_ADD_ASSIGN,	14, 0, true },
+		{ "-=", TOKEN_SUB_ASSIGN,	14, 0, true },
+		{ "++", TOKEN_INC,			1, 0, true },
+		{ "--", TOKEN_DEC,			1, 0, true },
+		{ "*=", TOKEN_MUL_ASSIGN,	14, 0, true },
+		{ "%=", TOKEN_MOD_ASSIGN,	14, 0, true },
+		{ "/=", TOKEN_DIV_ASSIGN,	14, 0, true },
+		{ "&=", TOKEN_AND_ASSIGN,	14, 0, true },
+		{ "|=", TOKEN_OR_ASSIGN,	14, 0, true },
+		{ "^=", TOKEN_XOR_ASSIGN,	14, 0, true },
+		{ "&&", TOKEN_LOGICAL_AND,	11, 0, true },
+		{ "||", TOKEN_LOGICAL_OR,	12, 0, true },
+		{ ">>", TOKEN_SHR,			5, 0, true },
+		{ "<<", TOKEN_SHL,			5, 0, true },
 
 		{ ";", TOKEN_SEMICOLON },
-		{ ",", TOKEN_COMMA, 15 },
-		{ "(", TOKEN_PAREN_OPEN, 1 },
-		{ ")", TOKEN_PAREN_CLOSE, 1 },
+		{ ",", TOKEN_COMMA,			15 },
+		{ "(", TOKEN_PAREN_OPEN,	 1 },
+		{ ")", TOKEN_PAREN_CLOSE,	1 },
 		{ "{", TOKEN_BRACKET_OPEN },
 		{ "}", TOKEN_BRACKET_CLOSE },
-		{ "[", TOKEN_BRACE_OPEN, 1, 0, true },
-		{ "]", TOKEN_BRACE_CLOSE, 1, 0, true },
-		{ "+", TOKEN_ADD, 4, 0, true },
-		{ "-", TOKEN_SUB, 4, 0, true },
-		{ "*", TOKEN_MUL, 3, 0, true },
-		{ "%", TOKEN_MOD, 3, 0, true },
-		{ "/", TOKEN_DIV, 3, 0, true },
-		{ "&", TOKEN_AND, 8, 0, true },
-		{ "|", TOKEN_OR, 10, 0, true },
-		{ "^", TOKEN_XOR, 9, 0, true },
-		{ "~", TOKEN_BIT_NOT, 2, 0, true },
-		{ "!", TOKEN_NOT, 2, 0, true },
-		{ "=", TOKEN_ASSIGN, 14, 0, true },
-		{ ">", TOKEN_GT, 6, 0, true },
-		{ "<", TOKEN_LT, 6, 0, true },
+		{ "[", TOKEN_BRACE_OPEN,	1, 0, true },
+		{ "]", TOKEN_BRACE_CLOSE,	1, 0, true },
+		{ "+", TOKEN_ADD,			4, 0, true },
+		{ "-", TOKEN_SUB,			4, 0, true },
+		{ "*", TOKEN_MUL,			3, 0, true },
+		{ "%", TOKEN_MOD,			3, 0, true },
+		{ "/", TOKEN_DIV,			3, 0, true },
+		{ "&", TOKEN_AND,			8, 0, true },
+		{ "|", TOKEN_OR,			10, 0, true },
+		{ "^", TOKEN_XOR,			9, 0, true },
+		{ "~", TOKEN_NOT,			2, 0, true },
+		{ "!", TOKEN_LOGICAL_NOT,	2, 0, true },
+		{ "=", TOKEN_ASSIGN,		14, 0, true },
+		{ ">", TOKEN_GT,			6, 0, true },
+		{ "<", TOKEN_LT,			6, 0, true },
 	};
 
 	inline std::unordered_map<std::string, token_info> static_tokens_map;
@@ -235,11 +235,11 @@ namespace kpp
 		case TOKEN_SHR:					return "TOKEN_SHR";
 		case TOKEN_SHL:					return "TOKEN_SHL";
 		case TOKEN_AND:					return "TOKEN_AND";
-		case TOKEN_LOGICAL_AND:			return "TOKEN_LOGICAL_AND";
 		case TOKEN_OR:					return "TOKEN_OR";
+		case TOKEN_LOGICAL_NOT:			return "TOKEN_LOGICAL_NOT";
+		case TOKEN_LOGICAL_AND:			return "TOKEN_LOGICAL_AND";
 		case TOKEN_LOGICAL_OR:			return "TOKEN_LOGICAL_OR";
 		case TOKEN_XOR:					return "TOKEN_XOR";
-		case TOKEN_BIT_NOT:				return "TOKEN_BIT_NOT";
 		case TOKEN_NOT:					return "TOKEN_NOT";
 		case TOKEN_ASSIGN:				return "TOKEN_ASSIGN";
 		case TOKEN_EQUAL:				return "TOKEN_EQUAL";

@@ -36,18 +36,21 @@ namespace kpp::ir
 		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_UNARY_OP(op) + " " + operand->get_value());
 	}
 
-	void Compare::print()
-	{
-		for (auto&& compare : items)
-		{
-			compare->print();
-			//PRINT_TABS_NL(C_CYAN, 1, "cmp " + compare->get_value());
-		}
-	}
-
 	void Block::print()
 	{
 		PRINT_TABS_NL(C_WHITE, 0, name + ":");
+	}
+
+	void BranchCond::print()
+	{
+		if (!target_if_true || !target_if_false)
+		{
+			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()));
+		}
+		else
+		{
+			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value() + ", " + target_if_true->get_value() + ", " + target_if_false->get_value());
+		}
 	}
 
 	void Branch::print()
@@ -207,10 +210,10 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 	{
 		auto stack_alloc = new ir::StackAlloc();
 
-		stack_alloc->value = pi.create_value(expr->name, stack_alloc);
+		stack_alloc->value = pi.add_value(expr->name, stack_alloc);
 		stack_alloc->ty = expr->ty;
 
-		pi.create_item(stack_alloc);
+		pi.add_item(stack_alloc);
 
 		if (expr->value)
 		{
@@ -220,7 +223,7 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 			store->ty = stack_alloc->ty;
 			store->operand = generate_from_expr(expr->value);
 
-			pi.create_item(store);
+			pi.add_item(store);
 		}
 
 		return stack_alloc;
@@ -237,7 +240,7 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 		store->ty = value_to_load->get_type();
 		store->operand = generate_from_expr(expr->value);
 
-		pi.create_item(store);
+		pi.add_item(store);
 
 		return store;
 	}
@@ -249,9 +252,9 @@ ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
 
 	value_int->value = expr->value;
 	value_int->ty = expr->ty;
-	value_int->name = pi.create_value(expr->get_name(), value_int);
+	value_int->name = pi.add_value(expr->get_name(), value_int);
 
-	pi.create_item(value_int);
+	pi.add_item(value_int);
 
 	return value_int;
 }
@@ -260,26 +263,65 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 {
 	auto binary_op = new ir::BinaryOp();
 
-	binary_op->left = generate_from_expr(expr->left);
 	binary_op->op = expr->op;
 	binary_op->ty = expr->ty;
+	binary_op->left = generate_from_expr(expr->left);
 	binary_op->right = generate_from_expr(expr->right);
-	binary_op->value = pi.create_value(expr->get_name(), binary_op);
+	binary_op->value = pi.add_value(expr->get_name(), binary_op);
 
-	pi.create_item(binary_op);
+	pi.add_item(binary_op);
 
 	return binary_op;
+}
+
+ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr)
+{
+	if (expr->op == TOKEN_LOGICAL_OR ||
+		expr->op == TOKEN_LOGICAL_AND)
+	{
+		auto left_block = pi.create_block(),
+			 right_block = pi.create_block();
+
+		auto bcond_left = new ir::BranchCond(),
+			 bcond_right = new ir::BranchCond();
+
+		auto gen_block = [&](ir::BranchCond* cond, ir::Block* block, ast::ExprBinaryOp* bin_op) -> ir::Instruction*
+		{
+			pi.add_block(block);
+
+			if (auto new_expr = generate_from_expr_binary_op_cond(bin_op))
+			{
+				cond->comparison = new_expr;
+				//cond->target_if_true = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.if_block);
+				//cond->target_if_false = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.end_block);
+
+				pi.add_item(cond);
+
+				return new_expr;
+			}
+			else pi.destroy_block(block);
+
+			return nullptr;
+		};
+
+		gen_block(bcond_left, left_block, static_cast<ast::ExprBinaryOp*>(expr->left));
+		gen_block(bcond_right, right_block, static_cast<ast::ExprBinaryOp*>(expr->right));
+
+		return nullptr;
+	}
+
+	return generate_from_expr_binary_op(expr);
 }
 
 ir::UnaryOp* ir_gen::generate_from_expr_unary_op(ast::ExprUnaryOp* expr)
 {
 	auto unary_op = new ir::UnaryOp();
 
-	pi.create_item(unary_op);
+	pi.add_item(unary_op);
 
-	unary_op->operand = generate_from_expr(expr->value);
 	unary_op->op = expr->op;
-	unary_op->value = pi.create_value(expr->get_name(), unary_op);
+	unary_op->operand = generate_from_expr(expr->value);
+	unary_op->value = pi.add_value(expr->get_name(), unary_op);
 
 	return unary_op;
 }
@@ -298,65 +340,52 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 	load->value = value_id;
 	load->ty = expr->ty;
-	load->dest_value = pi.create_value(expr->name, load);
+	load->dest_value = pi.add_value(expr->name, load);
 
-	pi.create_item(load);
+	pi.add_item(load);
 
 	return load;
 }
 
 ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
-	auto add_branch = [&](ir::Block* target)
-	{
-		auto branch = pi.create_branch();
-		if (!branch)
-			return false;
-			
-		branch->target = target;
-
-		return true;
-	};
-
-	auto compare = new ir::Compare();
-
-	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
-	{
-		//compare->items.push_back(generate_from_expr_binary_op(bin_op));
-	}
-
-	pi.create_item(compare);
-
 	auto if_block = pi.create_block(),
 		 else_block = pi.create_block(),
 		 end_block = pi.create_block();
+
+	pi.if_context = { if_block, else_block, end_block };
+
+	pi.create_new_branch_linked_to_next_block();
+
+	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
+		generate_from_expr_binary_op_cond(bin_op);
 
 	if (stmt_if->if_body)
 	{
 		pi.add_block(if_block);
 		generate_from_body(stmt_if->if_body);
-		add_branch(end_block);
+		pi.create_branch(nullptr, end_block);
 	}
 	else pi.destroy_block(if_block);
 
-	for (auto&& else_if : stmt_if->ifs)
+	/*for (auto&& else_if : stmt_if->ifs)
 	{
 		pi.create_block(true);
 		generate_from_body(else_if->if_body);
 		add_branch(end_block);
-	}
+	}*/
 
 	if (stmt_if->else_body)
 	{
 		pi.add_block(else_block);
 		generate_from_body(stmt_if->else_body);
-		add_branch(end_block);
+		pi.create_branch(nullptr, end_block);
 	}
 	else pi.destroy_block(else_block);
 
 	pi.add_block(end_block);
 
-	return compare;
+	return nullptr;
 }
 
 ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)

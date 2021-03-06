@@ -20,6 +20,7 @@
 #include <any>
 #include <stack>
 #include <optional>
+#include <functional>
 
 #include "debug.h"
 #include "rtti.h"
