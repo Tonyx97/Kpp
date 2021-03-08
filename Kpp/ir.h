@@ -14,6 +14,7 @@ namespace kpp
 			INS_VALUE_ID,
 			INS_BINARY_OP,
 			INS_UNARY_OP,
+			INS_CALL,
 			INS_STACK_ALLOC,
 			INS_STORE,
 			INS_LOAD,
@@ -128,17 +129,38 @@ namespace kpp
 
 			Instruction* operand = nullptr;
 
-			Token op = TOKEN_NONE;
+			Token op = TOKEN_NONE,
+				  ty = TOKEN_NONE;
 
 			UnaryOp()								{ type = INS_UNARY_OP; }
 
 			void print() override;
 
-			Token get_type() override				{ return op; }
+			Token get_type() override				{ return ty; }
 
 			std::string get_value() override		{ return value; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_UNARY_OP; }
+		};
+
+		/*
+		* Call
+		*/
+		struct Call : public Instruction
+		{
+			std::vector<Instruction*> params;
+
+			struct Prototype* prototype = nullptr;
+
+			Call()									{ type = INS_CALL; }
+
+			void print() override;
+
+			Token get_type() override				{ return TOKEN_NONE; }
+
+			std::string get_value() override		{ return {}; }
+
+			static bool check_class(Instruction* i) { return i->type == INS_CALL; }
 		};
 
 		/*
@@ -335,12 +357,12 @@ namespace kpp
 			std::vector<Prototype*> prototypes;
 		};
 
-		struct GlobalInfo
+		struct global_info
 		{
 			std::unordered_map<std::string, Prototype*> prototypes;
 		};
 
-		struct IfContext
+		struct if_context
 		{
 			Block* if_block = nullptr,
 				 * else_block = nullptr,
@@ -352,7 +374,7 @@ namespace kpp
 			}
 		};
 
-		struct PrototypeInfo
+		struct prototype_info
 		{
 			
 			std::unordered_map<std::string, Instruction*> values,
@@ -366,7 +388,7 @@ namespace kpp
 
 			Prototype* curr_prototype = nullptr;
 
-			IfContext if_context {};
+			if_context if_context {};
 
 			Block* curr_block = nullptr;
 
@@ -446,10 +468,6 @@ namespace kpp
 			{
 				auto new_block = new Block();
 
-				if (curr_block)
-					new_block->name = "block_" + std::to_string(++curr_block_num);
-				else new_block->name = "entry";
-
 				if (add)
 					add_block(new_block);
 
@@ -461,7 +479,7 @@ namespace kpp
 				if (!block)
 					return;
 
-				if (blocks_map.find(block->name) != blocks_map.end())
+				if (!block->name.empty() && blocks_map.find(block->name) != blocks_map.end())
 				{
 					auto fix_removed_branches = [&]()
 					{
@@ -505,6 +523,10 @@ namespace kpp
 
 					set_branch_next_block_target = false;
 				}
+
+				if (curr_block)
+					block->name = "block_" + std::to_string(++curr_block_num);
+				else block->name = "entry";
 
 				insert_block(block);
 
@@ -587,9 +609,9 @@ namespace kpp
 
 		ir::IR iri {};
 
-		ir::GlobalInfo gi {};
+		ir::global_info gi {};
 
-		ir::PrototypeInfo pi {};
+		ir::prototype_info pi {};
 
 		int print_level = 0;
 
@@ -614,9 +636,10 @@ namespace kpp
 		ir::Instruction* generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign* expr);
 		ir::ValueInt* generate_from_expr_int_literal(ast::ExprIntLiteral* expr);
 		ir::BinaryOp* generate_from_expr_binary_op(ast::ExprBinaryOp* expr);
-		ir::BinaryOp* generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr);
 		ir::UnaryOp* generate_from_expr_unary_op(ast::ExprUnaryOp* expr);
 		ir::Load* generate_from_expr_id(ast::ExprId* expr);
+		ir::Call* generate_from_expr_call(ast::ExprCall* expr);
+		ir::BinaryOp* generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);

@@ -6,6 +6,18 @@ using namespace kpp;
 
 namespace kpp::ir
 {
+	void Call::print()
+	{
+		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
+
+		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto ins)
+		{
+			return ins->get_value();
+		});
+
+		PRINT_NL;
+	}
+
 	void StackAlloc::print()
 	{
 		PRINT_TABS_NL(C_YELLOW, 1, value + " = stackalloc " + STRINGIFY_TYPE(ty));
@@ -199,7 +211,7 @@ ir::Instruction* ir_gen::generate_from_expr(ast::Expr* expr)
 	else if (auto decl_or_assign = rtti::safe_cast<ast::ExprDeclOrAssign>(expr)) return generate_from_expr_decl_or_assign(decl_or_assign);
 	else if (auto binary_op = rtti::safe_cast<ast::ExprBinaryOp>(expr))			 return generate_from_expr_binary_op(binary_op);
 	else if (auto unary_op = rtti::safe_cast<ast::ExprUnaryOp>(expr))			 return generate_from_expr_unary_op(unary_op);
-	/*else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))					 return generate_from_call(call);*/
+	else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))					 return generate_from_expr_call(call);
 
 	return nullptr;
 }
@@ -274,54 +286,16 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 	return binary_op;
 }
 
-ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr)
-{
-	if (expr->op == TOKEN_LOGICAL_OR ||
-		expr->op == TOKEN_LOGICAL_AND)
-	{
-		auto left_block = pi.create_block(),
-			 right_block = pi.create_block();
-
-		auto bcond_left = new ir::BranchCond(),
-			 bcond_right = new ir::BranchCond();
-
-		auto gen_block = [&](ir::BranchCond* cond, ir::Block* block, ast::ExprBinaryOp* bin_op) -> ir::Instruction*
-		{
-			pi.add_block(block);
-
-			if (auto new_expr = generate_from_expr_binary_op_cond(bin_op))
-			{
-				cond->comparison = new_expr;
-				//cond->target_if_true = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.if_block);
-				//cond->target_if_false = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.end_block);
-
-				pi.add_item(cond);
-
-				return new_expr;
-			}
-			else pi.destroy_block(block);
-
-			return nullptr;
-		};
-
-		gen_block(bcond_left, left_block, static_cast<ast::ExprBinaryOp*>(expr->left));
-		gen_block(bcond_right, right_block, static_cast<ast::ExprBinaryOp*>(expr->right));
-
-		return nullptr;
-	}
-
-	return generate_from_expr_binary_op(expr);
-}
-
 ir::UnaryOp* ir_gen::generate_from_expr_unary_op(ast::ExprUnaryOp* expr)
 {
 	auto unary_op = new ir::UnaryOp();
 
-	pi.add_item(unary_op);
-
 	unary_op->op = expr->op;
 	unary_op->operand = generate_from_expr(expr->value);
 	unary_op->value = pi.add_value(expr->get_name(), unary_op);
+	unary_op->ty = expr->value->get_ty();
+
+	pi.add_item(unary_op);
 
 	return unary_op;
 }
@@ -347,6 +321,58 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 	return load;
 }
 
+ir::Call* ir_gen::generate_from_expr_call(ast::ExprCall* expr)
+{
+	auto call = new ir::Call();
+
+	call->prototype = get_defined_prototype(expr->prototype);
+
+	for (auto&& param : expr->stmts)
+	{
+		call->params.push_back(generate_from_expr(param));
+	}
+
+	pi.add_item(call);
+
+	return call;
+}
+
+ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr)
+{
+	if (expr->op != TOKEN_LOGICAL_OR && expr->op != TOKEN_LOGICAL_AND)
+		return generate_from_expr_binary_op(expr);
+
+	auto left_block = pi.create_block(),
+		 right_block = pi.create_block();
+
+	auto bcond_left = new ir::BranchCond(),
+		 bcond_right = new ir::BranchCond();
+
+	auto gen_block = [&](ir::BranchCond* cond, ir::Block* block, ast::ExprBinaryOp* bin_op) -> ir::Instruction*
+	{
+		pi.add_block(block);
+
+		if (auto new_expr = generate_from_expr_binary_op_cond(bin_op))
+		{
+			cond->comparison = new_expr;
+			//cond->target_if_true = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.if_block);
+			//cond->target_if_false = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.end_block);
+
+			pi.add_item(cond);
+
+			return new_expr;
+		}
+		else pi.destroy_block(block);
+
+		return nullptr;
+	};
+
+	gen_block(bcond_left, left_block, static_cast<ast::ExprBinaryOp*>(expr->left));
+	gen_block(bcond_right, right_block, static_cast<ast::ExprBinaryOp*>(expr->right));
+
+	return nullptr;
+}
+
 ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
 	auto if_block = pi.create_block(),
@@ -370,9 +396,12 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 
 	/*for (auto&& else_if : stmt_if->ifs)
 	{
+		if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(else_if->expr))
+			generate_from_expr_binary_op_cond(bin_op);
+
 		pi.create_block(true);
 		generate_from_body(else_if->if_body);
-		add_branch(end_block);
+		pi.create_branch(nullptr, end_block);
 	}*/
 
 	if (stmt_if->else_body)

@@ -168,14 +168,15 @@ namespace kpp
 		{
 			Expr* value = nullptr;
 
-			Token op = TOKEN_NONE;
+			Token op = TOKEN_NONE,
+				  ty = TOKEN_NONE;
 
 			ExprUnaryOp(Token op, Expr* value) : op(op), value(value)
 											 { type = EXPR_UNARY_OP; }
 
 			void set_ty(Token ty)			 {}
 
-			Token get_ty()					 { return op; }
+			Token get_ty()					 { return ty; }
 
 			std::string get_name() override  { return STRINGIFY_TOKEN(op); };
 
@@ -190,6 +191,8 @@ namespace kpp
 			std::string name;
 
 			std::vector<Expr*> stmts;
+
+			struct Prototype* prototype = nullptr;
 
 			ExprCall(const std::string& name) : name(name) { type = EXPR_CALL; }
 			

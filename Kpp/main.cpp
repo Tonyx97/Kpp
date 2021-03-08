@@ -8,6 +8,8 @@
 
 int main(int argc, char** argv)
 {
+	dbg::setup_console();
+
 	PRINT(C_CYAN, "---------- LEXER (Lexic Analysis) ----------\n");
 
 	kpp::lexer lexer;

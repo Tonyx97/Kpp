@@ -112,6 +112,14 @@ namespace dbg
 		}
 	};
 
+	inline void setup_console()
+	{
+		static constexpr auto console_size_x = 800,
+							  console_size_y = 800;
+
+		SetWindowPos(GetConsoleWindow(), nullptr, GetSystemMetrics(SM_CXSCREEN) / 2 - console_size_x / 2, GetSystemMetrics(SM_CYSCREEN) / 2 - console_size_y / 2, console_size_x, console_size_y, 0);
+	}
+
 	template <typename... A>
 	static inline text make_text(uint16_t color, const std::string& txt, A&&... args)
 	{

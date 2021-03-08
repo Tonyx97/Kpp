@@ -93,26 +93,27 @@ bool semantic::analyze_expr(ast::Expr* expr)
 			add_error("'%s' identifier is undefined", decl_or_assign->name.c_str());
 
 		if (decl_or_assign->value)
-			analyze_expr(decl_or_assign->value);
+			return analyze_expr(decl_or_assign->value);
 	}
 	else if (auto binary_op = rtti::safe_cast<ast::ExprBinaryOp>(expr))
 	{
-		if (binary_op->left)
-			analyze_expr(binary_op->left);
-		else add_error("Expected an expression");
+		if (!binary_op->left || !analyze_expr(binary_op->left))
+			add_error("Expected an expression");
 
-		if (binary_op->right)
-			analyze_expr(binary_op->right);
-		else add_error("Expected an expression");
+		if (!binary_op->right || !analyze_expr(binary_op->right))
+			add_error("Expected an expression");
 	}
 	else if (auto unary_op = rtti::safe_cast<ast::ExprUnaryOp>(expr))
 	{
 		if (auto value_unary_op = rtti::safe_cast<ast::ExprUnaryOp>(unary_op->value))
-			analyze_expr(value_unary_op);
+			return analyze_expr(value_unary_op);
 		else
 		{
-			if (!rtti::safe_cast<ast::ExprId>(unary_op->value))
+			if (!rtti::safe_cast<ast::ExprId>(unary_op->value) &&
+				!rtti::safe_cast<ast::ExprIntLiteral>(unary_op->value))
 				add_error("Expression must be an lvalue");
+
+			return analyze_expr(unary_op->value);
 		}
 	}
 	else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))
@@ -136,11 +137,16 @@ bool semantic::analyze_expr(ast::Expr* expr)
 			const auto& original_param = static_cast<ast::ExprDeclOrAssign*>(prototype->params[i]);
 			const auto& current_param = call->stmts[i];
 
+			if (!analyze_expr(current_param))
+				return false;
+
 			if (original_param->ty != current_param->get_ty())
 				add_error("Argument of type '%s' is incompatible with parameter of type '%s'",
 						  STRINGIFY_TYPE(current_param->get_ty()).c_str(),
 						  STRINGIFY_TYPE(original_param->ty).c_str());
 		}
+
+		call->prototype = prototype;
 
 		gi.prototype_calls.insert({ prototype_name, pi.curr_prototype->name });
 	}
