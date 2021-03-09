@@ -22,7 +22,7 @@ namespace kpp
 		template <typename T>
 		static Int create(T val)
 		{
-			Int obj{}; obj.u64 = val;
+			Int obj { 0 }; obj.u64 = val;
 			return obj;
 		}
 	};

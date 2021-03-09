@@ -57,7 +57,7 @@ namespace kpp::ir
 	{
 		if (!target_if_true || !target_if_false)
 		{
-			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()));
+			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value());
 		}
 		else
 		{
@@ -337,26 +337,42 @@ ir::Call* ir_gen::generate_from_expr_call(ast::ExprCall* expr)
 	return call;
 }
 
-ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr)
+ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true, ir::Block* target_if_false)
 {
-	if (expr->op != TOKEN_LOGICAL_OR && expr->op != TOKEN_LOGICAL_AND)
+	const bool is_or = expr->op == TOKEN_LOGICAL_OR,
+			   is_and = expr->op == TOKEN_LOGICAL_AND;
+
+	if (!is_or && !is_and)
 		return generate_from_expr_binary_op(expr);
 
 	auto left_block = pi.create_block(),
 		 right_block = pi.create_block();
 
-	auto bcond_left = new ir::BranchCond(),
-		 bcond_right = new ir::BranchCond();
-
-	auto gen_block = [&](ir::BranchCond* cond, ir::Block* block, ast::ExprBinaryOp* bin_op) -> ir::Instruction*
+	auto gen_block = [&](ir::Block* block, ast::ExprBinaryOp* bin_op, bool left) -> ir::Instruction*
 	{
 		pi.add_block(block);
 
-		if (auto new_expr = generate_from_expr_binary_op_cond(bin_op))
+		ir::Block* tit = nullptr,
+				 * tif = nullptr;
+
+		if (left)
 		{
+			tit = is_or ? target_if_true : right_block;
+			tif = is_or ? right_block : target_if_false;
+		}
+		else
+		{
+			tit = target_if_true;
+			tif = target_if_false;
+		}
+
+		if (auto new_expr = generate_from_expr_binary_op_cond(bin_op, tit, tif))
+		{
+			auto cond = new ir::BranchCond();
+
 			cond->comparison = new_expr;
-			//cond->target_if_true = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.if_block);
-			//cond->target_if_false = (expr->op == TOKEN_LOGICAL_AND && expr->left == bin_op ? right_block : pi.if_context.end_block);
+			cond->target_if_true = tit;
+			cond->target_if_false = tif;
 
 			pi.add_item(cond);
 
@@ -367,8 +383,8 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr)
 		return nullptr;
 	};
 
-	gen_block(bcond_left, left_block, static_cast<ast::ExprBinaryOp*>(expr->left));
-	gen_block(bcond_right, right_block, static_cast<ast::ExprBinaryOp*>(expr->right));
+	gen_block(left_block, static_cast<ast::ExprBinaryOp*>(expr->left), true);
+	gen_block(right_block, static_cast<ast::ExprBinaryOp*>(expr->right), false);
 
 	return nullptr;
 }
@@ -379,12 +395,34 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 		 else_block = pi.create_block(),
 		 end_block = pi.create_block();
 
-	pi.if_context = { if_block, else_block, end_block };
-
-	pi.create_new_branch_linked_to_next_block();
+	pi.if_context = { stmt_if->if_body ? if_block : end_block, stmt_if->else_body ? else_block : end_block };
 
 	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
-		generate_from_expr_binary_op_cond(bin_op);
+	{
+		pi.create_new_branch_linked_to_next_block();
+
+		generate_from_expr_binary_op_cond(bin_op, pi.if_context.if_block, pi.if_context.else_block);
+	}
+	else if (auto id = rtti::safe_cast<ast::ExprId>(stmt_if->expr))
+	{
+		auto cmp = new ir::BinaryOp();
+
+		cmp->op = TOKEN_NOT_EQUAL;
+		cmp->ty = id->ty;
+		cmp->left = generate_from_expr_id(id);
+		cmp->right = new ir::ValueInt();
+		cmp->value = pi.add_value(id->get_name(), cmp);
+
+		pi.add_item(cmp);
+
+		auto bcond = new ir::BranchCond();
+
+		bcond->comparison = cmp;
+		bcond->target_if_true = stmt_if->if_body ? if_block : end_block;
+		bcond->target_if_false = stmt_if->else_body ? else_block : end_block;
+		
+		pi.add_item(bcond);
+	}
 
 	if (stmt_if->if_body)
 	{

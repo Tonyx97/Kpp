@@ -127,16 +127,17 @@ bool lexer::parse(const std::string& filename)
 				return false;
 			};
 
-			if (!check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL))
-				for (const auto& token : static_tokens)
+			check_token_regex(regex::INT_LITERAL, TOKEN_INT_LITERAL);
+
+			for (const auto& token : static_tokens)
+			{
+				if (!line.compare(0, token.value.length(), token.value))
 				{
-					if (!line.compare(0, token.value.length(), token.value))
-					{
-						curr_token = token;
-						break;
-					}
+					curr_token = token;
+					break;
 				}
-		
+			}
+
 			if (!curr_token)
 				check_token_regex(regex::WORD, TOKEN_ID);
 

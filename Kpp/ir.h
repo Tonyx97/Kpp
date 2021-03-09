@@ -59,7 +59,7 @@ namespace kpp
 		{
 			std::string name;
 
-			Int value;
+			Int value {};
 
 			Token ty = TOKEN_NONE;
 
@@ -365,12 +365,11 @@ namespace kpp
 		struct if_context
 		{
 			Block* if_block = nullptr,
-				 * else_block = nullptr,
-				 * end_block = nullptr;
+				 * else_block = nullptr;
 
 			void clear()
 			{
-				if_block = else_block = end_block = nullptr;
+				if_block = else_block = nullptr;
 			}
 		};
 
@@ -481,19 +480,33 @@ namespace kpp
 
 				if (!block->name.empty() && blocks_map.find(block->name) != blocks_map.end())
 				{
-					auto fix_removed_branches = [&]()
+					auto fix_blocks_references = [&]()
 					{
 						for (auto&& b : blocks)
 						{
 							for (auto&& i : b->items)
 							{
-								if (auto branch = rtti::safe_cast<Branch>(i); branch && branch->target == block)
+								if (auto branch = rtti::safe_cast<Branch>(i))
 								{
-									if (branch->target->next)
-										branch->target = branch->target->next;
-									else b->remove_item(branch);
-
-									return true;
+									if (branch->target == block)
+									{
+										if (branch->target->next)
+											branch->target = branch->target->next;
+										else b->remove_item(branch);
+									}
+								}
+								else if (auto bcond = rtti::safe_cast<BranchCond>(i))
+								{
+									if (bcond->target_if_true == block)
+									{
+										if (bcond->target_if_true->next)
+											bcond->target_if_true = bcond->target_if_true->next;
+									}
+									else if (bcond->target_if_false == block)
+									{
+										if (bcond->target_if_false->next)
+											bcond->target_if_false = bcond->target_if_false->next;
+									}
 								}
 							}
 						}
@@ -501,7 +514,7 @@ namespace kpp
 						return false;
 					};
 
-					fix_removed_branches();
+					fix_blocks_references();
 
 					erase_block(block);
 
@@ -577,7 +590,11 @@ namespace kpp
 		case TOKEN_MOD:			return "mod";
 		case TOKEN_XOR:			return "xor";
 		case TOKEN_EQUAL:		return "cmp eq";
-		case TOKEN_NOT_EQUAL:	return "cmp neq";
+		case TOKEN_NOT_EQUAL:	return "cmp ne";
+		case TOKEN_LT:			return "cmp lt";
+		case TOKEN_LTE:			return "cmp lte";
+		case TOKEN_GT:			return "cmp gt";
+		case TOKEN_GTE:			return "cmp gte";
 		case TOKEN_LOGICAL_AND:	return "and";
 		case TOKEN_LOGICAL_OR:	return "or";
 		}
@@ -639,7 +656,7 @@ namespace kpp
 		ir::UnaryOp* generate_from_expr_unary_op(ast::ExprUnaryOp* expr);
 		ir::Load* generate_from_expr_id(ast::ExprId* expr);
 		ir::Call* generate_from_expr_call(ast::ExprCall* expr);
-		ir::BinaryOp* generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr);
+		ir::BinaryOp* generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
