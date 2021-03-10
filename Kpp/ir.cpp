@@ -50,7 +50,7 @@ namespace kpp::ir
 
 	void Block::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 0, name + ":");
+		PRINT_TABS_NL(C_WHITE, 0, name + ": [" + std::to_string(refs) + " ref(s)]");
 	}
 
 	void BranchCond::print()
@@ -175,7 +175,9 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 
 	if (prototype->body)
 	{
-		pi.create_block(true);
+		auto entry_block = pi.create_block(true);
+
+		entry_block->inc_ref();
 
 		ir_prototype->body = generate_from_body(prototype->body);
 
@@ -184,6 +186,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 
 	add_prototype(ir_prototype);
 
+	pi.clear_out_unused_blocks();
 	pi.copy_to_prototype(ir_prototype);
 	pi.clear();
 
@@ -337,18 +340,31 @@ ir::Call* ir_gen::generate_from_expr_call(ast::ExprCall* expr)
 	return call;
 }
 
-ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true, ir::Block* target_if_false)
+bool ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true, ir::Block* target_if_false)
 {
 	const bool is_or = expr->op == TOKEN_LOGICAL_OR,
 			   is_and = expr->op == TOKEN_LOGICAL_AND;
 
 	if (!is_or && !is_and)
-		return generate_from_expr_binary_op(expr);
+	{
+		auto cond = new ir::BranchCond();
+
+		cond->comparison = generate_from_expr_binary_op(expr);
+		cond->target_if_true = target_if_true;
+		cond->target_if_false = target_if_false;
+
+		target_if_true->inc_ref();
+		target_if_false->inc_ref();
+
+		pi.add_item(cond);
+
+		return true;
+	}
 
 	auto left_block = pi.create_block(),
 		 right_block = pi.create_block();
 
-	auto gen_block = [&](ir::Block* block, ast::ExprBinaryOp* bin_op, bool left) -> ir::Instruction*
+	auto gen_block = [&](ir::Block* block, ast::ExprBinaryOp* bin_op, bool left)
 	{
 		pi.add_block(block);
 
@@ -366,42 +382,35 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr,
 			tif = target_if_false;
 		}
 
-		if (auto new_expr = generate_from_expr_binary_op_cond(bin_op, tit, tif))
-		{
-			auto cond = new ir::BranchCond();
-
-			cond->comparison = new_expr;
-			cond->target_if_true = tit;
-			cond->target_if_false = tif;
-
-			pi.add_item(cond);
-
-			return new_expr;
-		}
-		else pi.destroy_block(block);
-
-		return nullptr;
+		return generate_from_expr_binary_op_cond(bin_op, tit, tif);
 	};
 
-	gen_block(left_block, static_cast<ast::ExprBinaryOp*>(expr->left), true);
-	gen_block(right_block, static_cast<ast::ExprBinaryOp*>(expr->right), false);
+	bool left_ok = gen_block(left_block, static_cast<ast::ExprBinaryOp*>(expr->left), true),
+		 right_ok = gen_block(right_block, static_cast<ast::ExprBinaryOp*>(expr->right), false);
 
-	return nullptr;
+	return (left_ok || right_ok);
 }
 
 ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 {
-	auto if_block = pi.create_block(),
-		 else_block = pi.create_block(),
-		 end_block = pi.create_block();
+	auto end_block = pi.create_block(),
+		 if_block = stmt_if->if_body ? pi.create_block() : end_block,
+		 else_block = stmt_if->else_body ? pi.create_block() : end_block;
 
-	pi.if_context = { stmt_if->if_body ? if_block : end_block, stmt_if->else_body ? else_block : end_block };
+	std::vector<ir::Block*> else_if_blocks;
+
+	pi.if_context = { if_block, else_block };
+
+	for (auto&& else_if : stmt_if->ifs)
+		else_if_blocks.push_back(pi.create_block());
+
+	auto curr_block = pi.curr_block;
 
 	if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(stmt_if->expr))
 	{
-		pi.create_new_branch_linked_to_next_block();
+		generate_from_expr_binary_op_cond(bin_op, pi.if_context.if_block, else_if_blocks.empty() ? pi.if_context.else_block : else_if_blocks[0]);
 
-		generate_from_expr_binary_op_cond(bin_op, pi.if_context.if_block, pi.if_context.else_block);
+		pi.create_branch_in_block_to_next(curr_block);
 	}
 	else if (auto id = rtti::safe_cast<ast::ExprId>(stmt_if->expr))
 	{
@@ -418,8 +427,8 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 		auto bcond = new ir::BranchCond();
 
 		bcond->comparison = cmp;
-		bcond->target_if_true = stmt_if->if_body ? if_block : end_block;
-		bcond->target_if_false = stmt_if->else_body ? else_block : end_block;
+		bcond->target_if_true = pi.if_context.if_block;
+		bcond->target_if_false = pi.if_context.else_block;
 		
 		pi.add_item(bcond);
 	}
@@ -430,17 +439,24 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 		generate_from_body(stmt_if->if_body);
 		pi.create_branch(nullptr, end_block);
 	}
-	else pi.destroy_block(if_block);
 
-	/*for (auto&& else_if : stmt_if->ifs)
+	int curr_else_if_block_index = 0;
+
+	for (auto&& else_if : stmt_if->ifs)
 	{
-		if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(else_if->expr))
-			generate_from_expr_binary_op_cond(bin_op);
+		auto cmp_block = else_if_blocks[curr_else_if_block_index++],
+			 next_else_if_block = curr_else_if_block_index >= else_if_blocks.size() ? else_block : else_if_blocks[curr_else_if_block_index],
+			 else_if_block = pi.create_block();
 
-		pi.create_block(true);
+		pi.add_block(cmp_block);
+
+		if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(else_if->expr))
+			generate_from_expr_binary_op_cond(bin_op, else_if_block, next_else_if_block);
+
+		pi.add_block(else_if_block);
 		generate_from_body(else_if->if_body);
 		pi.create_branch(nullptr, end_block);
-	}*/
+	}
 
 	if (stmt_if->else_body)
 	{
@@ -448,7 +464,6 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 		generate_from_body(stmt_if->else_body);
 		pi.create_branch(nullptr, end_block);
 	}
-	else pi.destroy_block(else_block);
 
 	pi.add_block(end_block);
 

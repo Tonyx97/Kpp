@@ -234,12 +234,18 @@ namespace kpp
 		{
 			std::vector<Instruction*> items;
 
+			using items_it = decltype(items)::iterator;
+
 			std::string name;
 
 			Block* prev = nullptr,
 				 * next = nullptr;
 			
+			int refs = 0;
+			
 			Block()									{ type = INS_BLOCK; }
+
+			bool is_empty() const					{ return items.empty(); }
 
 			void remove_item(Instruction* item)
 			{
@@ -247,15 +253,21 @@ namespace kpp
 					items.erase(it);
 			}
 
+			void add_item(Instruction* item)		{ items.push_back(item); }
+
+			void add_items(const items_it& begin, const items_it& end)
+			{
+				items.insert(items.end(), begin, end);
+			}
+
+			void inc_ref() { ++refs; }
+			void dec_ref() { --refs; }
+
 			void print() override;
 
 			Token get_type() override				{ return TOKEN_NONE; }
 
 			std::string get_value() override		{ return name; }
-
-			bool is_empty() const					{ return items.empty(); }
-
-			void add_item(Instruction* item)		{ items.push_back(item); }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BLOCK; }
 		};
@@ -394,8 +406,6 @@ namespace kpp
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
 
-			bool set_branch_next_block_target = false;
-
 			void clear()
 			{
 				curr_prototype = nullptr;
@@ -420,9 +430,10 @@ namespace kpp
 				prototype->blocks = blocks;
 			}
 
-			void create_new_branch_linked_to_next_block()
+			void create_branch_in_block_to_next(Block* block)
 			{
-				set_branch_next_block_target = true;
+				if (block && block->next)
+					create_branch(block, block->next);
 			}
 
 			void add_item(Instruction* item)
@@ -473,6 +484,26 @@ namespace kpp
 				return new_block;
 			}
 
+			void clear_out_unused_blocks()
+			{
+				std::stack<Block*> unused_blocks;
+
+				for (auto&& b : blocks)
+					if (b->refs == 0)
+					{
+						if (auto prev_block = b->prev)
+							prev_block->add_items(b->items.begin(), b->items.end());
+
+						unused_blocks.push(b);
+					}
+
+				while (!unused_blocks.empty())
+				{
+					destroy_block(unused_blocks.top());
+					unused_blocks.pop();
+				}
+			}
+
 			void destroy_block(Block* block)
 			{
 				if (!block)
@@ -480,42 +511,6 @@ namespace kpp
 
 				if (!block->name.empty() && blocks_map.find(block->name) != blocks_map.end())
 				{
-					auto fix_blocks_references = [&]()
-					{
-						for (auto&& b : blocks)
-						{
-							for (auto&& i : b->items)
-							{
-								if (auto branch = rtti::safe_cast<Branch>(i))
-								{
-									if (branch->target == block)
-									{
-										if (branch->target->next)
-											branch->target = branch->target->next;
-										else b->remove_item(branch);
-									}
-								}
-								else if (auto bcond = rtti::safe_cast<BranchCond>(i))
-								{
-									if (bcond->target_if_true == block)
-									{
-										if (bcond->target_if_true->next)
-											bcond->target_if_true = bcond->target_if_true->next;
-									}
-									else if (bcond->target_if_false == block)
-									{
-										if (bcond->target_if_false->next)
-											bcond->target_if_false = bcond->target_if_false->next;
-									}
-								}
-							}
-						}
-
-						return false;
-					};
-
-					fix_blocks_references();
-
 					erase_block(block);
 
 					if (block->prev)
@@ -530,13 +525,6 @@ namespace kpp
 
 			void add_block(Block* block)
 			{
-				if (set_branch_next_block_target)
-				{
-					create_branch(curr_block, block);
-
-					set_branch_next_block_target = false;
-				}
-
 				if (curr_block)
 					block->name = "block_" + std::to_string(++curr_block_num);
 				else block->name = "entry";
@@ -558,6 +546,8 @@ namespace kpp
 					return nullptr;
 
 				branch->target = target;
+
+				target->inc_ref();
 
 				if (block)
 					add_item_to_block(block, branch);
@@ -656,7 +646,7 @@ namespace kpp
 		ir::UnaryOp* generate_from_expr_unary_op(ast::ExprUnaryOp* expr);
 		ir::Load* generate_from_expr_id(ast::ExprId* expr);
 		ir::Call* generate_from_expr_call(ast::ExprCall* expr);
-		ir::BinaryOp* generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
+		bool generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
