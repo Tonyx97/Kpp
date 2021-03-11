@@ -10,10 +10,7 @@ namespace kpp::ir
 	{
 		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
 
-		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto ins)
-		{
-			return ins->get_value();
-		});
+		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto param) { return param->get_value(); });
 
 		PRINT_NL;
 	}
@@ -50,7 +47,15 @@ namespace kpp::ir
 
 	void Block::print()
 	{
-		PRINT_TABS_NL(C_WHITE, 0, name + ": [" + std::to_string(refs) + " ref(s)]");
+		if (!refs.empty())
+		{
+			PRINT_TABS(C_WHITE, 0, name + ": [refs: ");
+
+			dbg::print_vec<ir::Block>(C_WHITE, refs, ", ", [](auto block) { return block->name; });
+
+			PRINT(C_WHITE, "]");
+		}
+		else PRINT_TABS(C_WHITE, 0, name + ": [no refs]");
 	}
 
 	void BranchCond::print()
@@ -177,7 +182,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	{
 		auto entry_block = pi.create_block(true);
 
-		entry_block->inc_ref();
+		entry_block->add_ref(entry_block);
 
 		ir_prototype->body = generate_from_body(prototype->body);
 
@@ -353,8 +358,8 @@ bool ir_gen::generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Bloc
 		cond->target_if_true = target_if_true;
 		cond->target_if_false = target_if_false;
 
-		target_if_true->inc_ref();
-		target_if_false->inc_ref();
+		target_if_true->add_ref(pi.curr_block);
+		target_if_false->add_ref(pi.curr_block);
 
 		pi.add_item(cond);
 
@@ -440,23 +445,20 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 		pi.create_branch(nullptr, end_block);
 	}
 
-	int curr_else_if_block_index = 0;
+	if (auto stmt_ifs_and_blocks = util::stl::zip_next(stmt_if->ifs, else_if_blocks))
+		for (const auto& [ast_if, _1, _2, cmp_block, next_block, end2] : stmt_ifs_and_blocks)
+		{
+			auto else_if_block = pi.create_block();
 
-	for (auto&& else_if : stmt_if->ifs)
-	{
-		auto cmp_block = else_if_blocks[curr_else_if_block_index++],
-			 next_else_if_block = curr_else_if_block_index >= else_if_blocks.size() ? else_block : else_if_blocks[curr_else_if_block_index],
-			 else_if_block = pi.create_block();
+			pi.add_block(*cmp_block);
 
-		pi.add_block(cmp_block);
+			if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>((*ast_if)->expr))
+				generate_from_expr_binary_op_cond(bin_op, else_if_block, next_block != end2 ? *next_block : else_block);
 
-		if (auto bin_op = rtti::safe_cast<ast::ExprBinaryOp>(else_if->expr))
-			generate_from_expr_binary_op_cond(bin_op, else_if_block, next_else_if_block);
-
-		pi.add_block(else_if_block);
-		generate_from_body(else_if->if_body);
-		pi.create_branch(nullptr, end_block);
-	}
+			pi.add_block(else_if_block);
+			generate_from_body((*ast_if)->if_body);
+			pi.create_branch(nullptr, end_block);
+		}
 
 	if (stmt_if->else_body)
 	{

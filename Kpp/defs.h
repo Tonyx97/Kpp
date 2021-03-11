@@ -21,7 +21,9 @@
 #include <stack>
 #include <optional>
 #include <functional>
+#include <ranges>
 
 #include "debug.h"
 #include "rtti.h"
+#include "utils.h"
 #include "err_handler.h"

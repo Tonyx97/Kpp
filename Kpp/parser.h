@@ -34,6 +34,5 @@ namespace kpp
 		opt_token_info parse_type();
 		opt_token_info parse_keyword();
 		opt_token_info parse_id();
-
 	};
 }

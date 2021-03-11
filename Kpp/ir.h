@@ -234,6 +234,8 @@ namespace kpp
 		{
 			std::vector<Instruction*> items;
 
+			std::vector<Block*> refs;
+
 			using items_it = decltype(items)::iterator;
 
 			std::string name;
@@ -241,27 +243,21 @@ namespace kpp
 			Block* prev = nullptr,
 				 * next = nullptr;
 			
-			int refs = 0;
-			
 			Block()									{ type = INS_BLOCK; }
 
 			bool is_empty() const					{ return items.empty(); }
 
-			void remove_item(Instruction* item)
-			{
-				if (auto it = std::find(items.begin(), items.end(), item); it != items.end())
-					items.erase(it);
-			}
-
 			void add_item(Instruction* item)		{ items.push_back(item); }
+			void add_ref(Block* block)				{ refs.push_back(block); }
 
 			void add_items(const items_it& begin, const items_it& end)
-			{
-				items.insert(items.end(), begin, end);
-			}
+													{ items.insert(items.end(), begin, end); }
 
-			void inc_ref() { ++refs; }
-			void dec_ref() { --refs; }
+			void fix_ref(Block* old_block, Block* new_block)
+			{
+				if (auto it = std::find(refs.begin(), refs.end(), old_block); it != refs.end())
+					*it = new_block;
+			}
 
 			void print() override;
 
@@ -488,14 +484,29 @@ namespace kpp
 			{
 				std::stack<Block*> unused_blocks;
 
-				for (auto&& b : blocks)
-					if (b->refs == 0)
+				for (auto&& b : blocks | std::views::reverse)
+				{
+					if (b->refs.empty())
 					{
+						unused_blocks.push(b);
+
 						if (auto prev_block = b->prev)
+						{
 							prev_block->add_items(b->items.begin(), b->items.end());
 
-						unused_blocks.push(b);
+							for (auto&& item : b->items)
+							{
+								if (auto branch = rtti::safe_cast<Branch>(item))
+									branch->target->fix_ref(b, prev_block);
+								else if (auto bcond = rtti::safe_cast<BranchCond>(item))
+								{
+									bcond->target_if_true->fix_ref(b, prev_block);
+									bcond->target_if_false->fix_ref(b, prev_block);
+								}
+							}
+						}
 					}
+				}
 
 				while (!unused_blocks.empty())
 				{
@@ -547,7 +558,7 @@ namespace kpp
 
 				branch->target = target;
 
-				target->inc_ref();
+				target->add_ref(block ? block : curr_block);
 
 				if (block)
 					add_item_to_block(block, branch);
