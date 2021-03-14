@@ -13,7 +13,9 @@
   <ItemGroup>
     <ClCompile Include="ast.cpp" />
     <ClCompile Include="configs.cpp" />
+    <ClCompile Include="dom_tree.cpp" />
     <ClCompile Include="err_handler.cpp" />
+    <ClCompile Include="gv.cpp" />
     <ClCompile Include="ir.cpp" />
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="lexer.cpp" />
@@ -24,7 +26,9 @@
     <ClInclude Include="ast.h" />
     <ClInclude Include="configs.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="dom_tree.h" />
     <ClInclude Include="err_handler.h" />
+    <ClInclude Include="gv.h" />
     <ClInclude Include="ir.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="defs.h" />
@@ -73,13 +77,15 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)bins\</OutDir>
     <TargetName>kpp</TargetName>
-    <IncludePath>$(ProjectDir);$(IncludePath)</IncludePath>
+    <IncludePath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\include;$(ProjectDir);$(IncludePath)</IncludePath>
+    <LibraryPath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bins\</OutDir>
     <TargetName>kpp</TargetName>
-    <IncludePath>$(ProjectDir);$(IncludePath)</IncludePath>
+    <IncludePath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\include;$(ProjectDir);$(IncludePath)</IncludePath>
+    <LibraryPath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -93,6 +99,7 @@
       <GuardEHContMetadata>false</GuardEHContMetadata>
       <CallingConvention>FastCall</CallingConvention>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

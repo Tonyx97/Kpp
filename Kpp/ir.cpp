@@ -1,6 +1,9 @@
 #include <defs.h>
 
+#include "dom_tree.h"
 #include "ir.h"
+
+#include "gv.h"
 
 using namespace kpp;
 
@@ -135,6 +138,60 @@ void ir_gen::print_block(ir::Block* block)
 void ir_gen::print_item(ir::Instruction* item)
 {
 	item->print();
+}
+
+void ir_gen::build_dominance_trees()
+{
+	std::vector<dom_tree*> trees;
+
+	for (const auto& prototype : iri.prototypes)
+	{
+		auto entry = prototype->get_entry_block();
+		if (!entry)
+			return;
+
+		auto tree = prototype->dominance_tree = new dom_tree(prototype, entry);
+		if (!tree)
+			return;
+
+		tree->build();
+	}
+}
+
+void ir_gen::display_dominance_tree()
+{
+	graph::gv g("dom_tree.gv", "dom_tree");
+
+	g.set_bg_color("white");
+	g.set_font_name("Agency FB");
+	g.set_font_size("14");
+
+	for (const auto& prototype : iri.prototypes)
+	{
+		g.set_base_name(prototype->name);
+
+		auto subg = g.create_subgraph(prototype->name);
+
+		for (auto&& [v, dom] : prototype->dominance_tree->get_doms())
+		{
+			auto node_v = g.get_node_by_name(v->name),
+				 node_dom = g.get_node_by_name(dom->name);
+
+			if (!node_v)
+				if (node_v = g.create_node(v->name, v->name, "ellipse", v->name.find("entry") != -1 ? "yellow" : "antiquewhite", "filled"))
+					subg->add_node(node_v);
+
+			if (!node_dom)
+				if (node_dom = g.create_node(dom->name, dom->name, "ellipse", dom->name.find("entry") != -1 ? "yellow" : "antiquewhite", "filled"))
+					subg->add_node(node_dom);
+
+			if (node_v && node_dom && v != dom)
+				node_dom->add_link(node_v);
+		}
+	}
+
+	g.build();
+	g.render("Program Dominance Tree");
 }
 
 void ir_gen::add_prototype(ir::Prototype* prototype)

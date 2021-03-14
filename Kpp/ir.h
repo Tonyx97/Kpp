@@ -242,6 +242,8 @@ namespace kpp
 
 			Block* prev = nullptr,
 				 * next = nullptr;
+
+			int reverse_postorder_index = -1;
 			
 			Block()									{ type = INS_BLOCK; }
 
@@ -343,6 +345,8 @@ namespace kpp
 
 			std::vector<Block*> blocks;
 
+			dom_tree* dominance_tree = nullptr;
+
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
 
@@ -352,17 +356,16 @@ namespace kpp
 
 			Token ret_ty = TOKEN_NONE;
 
+			Prototype()								{}
+			~Prototype()							{ delete dominance_tree; }
+
 			bool is_empty() const					{ return blocks.empty(); }
 
 			void add_param(PrototypeParam* param)	{ params.push_back(param); }
-
-			Block* get_last_block()					{ return blocks.back(); }
-			Block* get_second_last_block()			{ return *(blocks.rbegin() + 1); }
-		};
-
-		struct IR
-		{
-			std::vector<Prototype*> prototypes;
+			
+			Block* get_entry_block()				{ return (blocks.empty() ? nullptr : blocks[0]); }
+			Block* get_last_block()					{ return (blocks.empty() ? nullptr : blocks.back()); }
+			Block* get_second_last_block()			{ return (blocks.empty() ? nullptr : *(blocks.rbegin() + 1)); }
 		};
 
 		struct global_info
@@ -578,6 +581,11 @@ namespace kpp
 				return ret;
 			}
 		};
+
+		struct IR
+		{
+			std::vector<Prototype*> prototypes;
+		};
 	}
 
 	inline std::string STRINGIFY_BINARY_OP(Token op)
@@ -642,6 +650,8 @@ namespace kpp
 		void print_prototype(ir::Prototype* prototype);
 		void print_block(ir::Block* block);
 		void print_item(ir::Instruction* item);
+		void build_dominance_trees();
+		void display_dominance_tree();
 
 		void add_prototype(ir::Prototype* prototype);
 
@@ -659,6 +669,7 @@ namespace kpp
 		ir::Call* generate_from_expr_call(ast::ExprCall* expr);
 		bool generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
+
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 

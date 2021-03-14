@@ -29,7 +29,7 @@ enum eColor : unsigned short
 
 namespace dbg
 {
-	static constexpr auto SINGLE_TEXT_MAX_LENGTH = 0x100;
+	static constexpr auto SINGLE_TEXT_MAX_LENGTH = 0x800;
 	static constexpr auto SPACES_PER_TAB = 2;
 
 	enum eTextSection

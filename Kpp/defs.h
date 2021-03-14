@@ -22,8 +22,20 @@
 #include <optional>
 #include <functional>
 #include <ranges>
+#include <span>
 
 #include "debug.h"
 #include "rtti.h"
 #include "utils.h"
 #include "err_handler.h"
+
+#ifdef _DEBUG
+#pragma comment(lib, "opencv_world451d.lib")
+#else
+#pragma comment(lib, "opencv_world451.lib")
+#endif
+
+#include <opencv2/opencv_modules.hpp>
+#include <opencv2/opencv.hpp>
+
+#include "gv.h"

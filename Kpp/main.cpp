@@ -4,13 +4,14 @@
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"
+#include "dom_tree.h"
 #include "ir.h"
 
 int main(int argc, char** argv)
 {
 	dbg::setup_console();
 
-	PRINT(C_CYAN, "---------- LEXER (Lexic Analysis) ----------\n");
+	PRINT(C_CYAN, "---------- Lexer (Lexic Analysis) ----------\n");
 
 	kpp::lexer lexer;
 
@@ -27,7 +28,7 @@ int main(int argc, char** argv)
 	lexer.print_list();
 	lexer.print_errors();
 
-	PRINT(C_CYAN, "\n---------- PARSER (Syntax Analysis) ----------\n");
+	PRINT(C_CYAN, "\n---------- Parser (Syntax Analysis) ----------\n");
 
 	kpp::parser parser(lexer);
 
@@ -70,11 +71,29 @@ int main(int argc, char** argv)
 
 	ir_gen.print_ir();
 
+	PRINT(C_CYAN, "---------- Dominance Trees Generation ----------\n");
+
+	{
+		PROFILE("DT Time");
+		ir_gen.build_dominance_trees();
+	}
+
+	PRINT(C_CYAN, "\n---------- Dominance Trees ----------\n");
+
+	PRINT(C_YELLOW, "Displaying Dominance Tree...\n");
+
+	ir_gen.display_dominance_tree();
+
 	PRINT(C_CYAN, "---------- ASM ----------\n");
 
 	{
 		PROFILE("ASM Generation Time");
 	}
 	
-	return std::cin.get();
+	Sleep(1000);
+
+	do Sleep(100);
+	while (!GetAsyncKeyState(VK_ESCAPE));
+
+	return 1;
 }
