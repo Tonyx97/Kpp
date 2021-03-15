@@ -8,12 +8,16 @@ namespace kpp
 		struct Block;
 	}
 
+	using dom_pair = std::pair<ir::Block*, ir::Block*>;
+
 	class dom_tree
 	{
 	private:
 
-		std::map<ir::Block*, ir::Block*> doms;
+		std::unordered_map<ir::Block*, ir::Block*> doms;
 
+		std::vector<dom_pair> ordered_doms;
+		
 		std::vector<ir::Block*> reversed_postorder;
 
 		ir::Prototype* prototype = nullptr;
@@ -36,5 +40,6 @@ namespace kpp
 		ir::Block* get_entry() const	{ return entry; }
 
 		const auto& get_doms()			{ return doms; }
+		const auto& get_ordered_doms()	{ return ordered_doms; }
 	};
 }

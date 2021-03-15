@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 		PROFILE("ASM Generation Time");
 	}
 	
-	Sleep(1000);
+	Sleep(500);
 
 	do Sleep(100);
 	while (!GetAsyncKeyState(VK_ESCAPE));

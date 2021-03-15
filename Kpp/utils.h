@@ -71,5 +71,40 @@ namespace kpp
 				operator bool()  { return (!v1.empty() && !v2.empty()); }
 			};
 		}
+
+		namespace winapi
+		{
+			inline bool get_PATH(std::vector<std::string>& paths)
+			{
+				HKEY key = nullptr;
+
+				if (RegOpenKey(HKEY_CURRENT_USER, L"Environment\\", &key) != ERROR_SUCCESS)
+					return false;
+
+				std::string path_list; path_list.resize(8192);
+
+				DWORD size = 0,
+					  type = REG_EXPAND_SZ;
+
+				auto res = RegQueryValueExA(key, "Path", nullptr, nullptr, (BYTE*)path_list.data(), &size);
+				while (res == ERROR_MORE_DATA)
+				{
+					path_list.resize(size);
+					res = RegQueryValueExA(key, "Path", nullptr, nullptr, (BYTE*)path_list.data(), &size);
+				}
+
+				if (res != ERROR_SUCCESS)
+					return false;
+
+				std::stringstream ss(path_list);
+
+				std::string path;
+
+				while (std::getline(ss, path, ';'))
+					paths.push_back(path);
+
+				return true;
+			}
+		}
 	}
 }

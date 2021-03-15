@@ -57,6 +57,7 @@ void dom_tree::build()
 
 			for (const auto& p : std::span(b->refs).subspan(1))
 				if (auto dom = get_dom(p))
+
 					new_idom = intersect(p, new_idom);
 
 			if (auto bdom = get_dom(b); bdom != new_idom)
@@ -66,6 +67,13 @@ void dom_tree::build()
 			}
 		}
 	}
+
+	ordered_doms = decltype(ordered_doms)(doms.begin(), doms.end());
+
+	std::sort(ordered_doms.begin(), ordered_doms.end(), [&](const dom_pair& l, const dom_pair& r)
+	{
+		return l.first->reverse_postorder_index < r.first->reverse_postorder_index;
+	});
 }
 
 void dom_tree::set_dom(ir::Block* v, ir::Block* dom)

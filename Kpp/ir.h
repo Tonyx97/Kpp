@@ -244,6 +244,8 @@ namespace kpp
 				 * next = nullptr;
 
 			int reverse_postorder_index = -1;
+
+			bool is_entry = false;
 			
 			Block()									{ type = INS_BLOCK; }
 
@@ -541,7 +543,11 @@ namespace kpp
 			{
 				if (curr_block)
 					block->name = "block_" + std::to_string(++curr_block_num);
-				else block->name = "entry";
+				else
+				{
+					block->name = "entry";
+					block->is_entry = true;
+				}
 
 				insert_block(block);
 

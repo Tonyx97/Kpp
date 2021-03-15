@@ -163,8 +163,8 @@ void ir_gen::display_dominance_tree()
 	graph::gv g("dom_tree.gv", "dom_tree");
 
 	g.set_bg_color("white");
-	g.set_font_name("Agency FB");
-	g.set_font_size("14");
+	g.set_font_name("Inconsolata");
+	g.set_font_size("12");
 
 	for (const auto& prototype : iri.prototypes)
 	{
@@ -172,17 +172,17 @@ void ir_gen::display_dominance_tree()
 
 		auto subg = g.create_subgraph(prototype->name);
 
-		for (auto&& [v, dom] : prototype->dominance_tree->get_doms())
+		for (const auto& [v, dom] : prototype->dominance_tree->get_ordered_doms())
 		{
 			auto node_v = g.get_node_by_name(v->name),
 				 node_dom = g.get_node_by_name(dom->name);
 
 			if (!node_v)
-				if (node_v = g.create_node(v->name, v->name, "ellipse", v->name.find("entry") != -1 ? "yellow" : "antiquewhite", "filled"))
+				if (node_v = g.create_node(v->name, v->name, "ellipse", v->is_entry ? "cyan" : "gray", "filled"))
 					subg->add_node(node_v);
 
 			if (!node_dom)
-				if (node_dom = g.create_node(dom->name, dom->name, "ellipse", dom->name.find("entry") != -1 ? "yellow" : "antiquewhite", "filled"))
+				if (node_dom = g.create_node(dom->name, dom->name, "ellipse", dom->is_entry ? "cyan" : "gray", "filled"))
 					subg->add_node(node_dom);
 
 			if (node_v && node_dom && v != dom)
@@ -191,7 +191,7 @@ void ir_gen::display_dominance_tree()
 	}
 
 	g.build();
-	g.render("Program Dominance Tree");
+	g.render("Dominance Trees");
 }
 
 void ir_gen::add_prototype(ir::Prototype* prototype)

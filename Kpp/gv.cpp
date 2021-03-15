@@ -12,6 +12,7 @@ void gv::build()
 		return;
 
 	file << "digraph " << name << " {" << std::endl;
+	file << "graph [dpi = 100]" << std::endl;
 
 	file << dbg::format(R"(graph [fontname = "%s", fontsize = %s])", font_name.c_str(), font_size.c_str()) << std::endl;
 	file << dbg::format(R"(node [fontname = "%s", fontsize = %s])", font_name.c_str(), font_size.c_str()) << std::endl;
@@ -49,6 +50,11 @@ void gv::build()
 
 void gv::render(const std::string& title)
 {
+	std::vector<std::string> paths;
+
+	if (!util::winapi::get_PATH(paths))
+		return;
+
 	STARTUPINFOA si;
 	PROCESS_INFORMATION pi;
 
@@ -57,30 +63,49 @@ void gv::render(const std::string& title)
 
 	si.cb = sizeof(si);
 
-	if (!CreateProcessA("C:\\Program Files\\Graphviz 2.44.1\\bin\\dot.exe", (char*)("dot.exe -Tpng -O " + filename).c_str(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi))
+	bool graphviz_running = false;
+
+	for (const auto& path : paths)
+		if (graphviz_running = CreateProcessA((path + "\\dot.exe").c_str(), (char*)("dot.exe -Tpng -O " + filename).c_str(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi))
+			break;
+
+	if (!graphviz_running)
 		return;
 
-	WaitForSingleObject(pi.hProcess, INFINITE);
+	if (WaitForSingleObject(pi.hProcess, 5000) == WAIT_TIMEOUT)
+		return;
 
-	if (auto image = cv::imread(filename + ".png"); !image.empty())
+	if (auto img = cv::imread(filename + ".png"); !img.empty())
 	{
-		int win_w = image.cols,
-			win_h = std::clamp(image.rows, 0, 1200);
+		int win_w = std::clamp(img.cols, 0, 1600),
+			win_h = std::clamp(img.rows, 0, 1200);
 
 		cv::namedWindow(title, cv::WINDOW_NORMAL);
 		cv::resizeWindow(title, win_w, win_h);
 		cv::moveWindow(title, GetSystemMetrics(SM_CXSCREEN) / 2 - win_w / 2, GetSystemMetrics(SM_CYSCREEN) / 2 - win_h / 2);
 
-		if (win_h >= image.rows) win_h = image.rows - 1;
-		if (win_w >= image.cols) win_w = image.cols - 1;
+		if (win_h >= img.rows) win_h = img.rows;
+		if (win_w >= img.cols) win_w = img.cols;
 
 		int scroll_h = 0,
-			scroll_w = 0;
+			scroll_w = 0,
+			wheel_delta = 0;
 
-		cv::createTrackbar("Width", title, &scroll_w, (image.cols - win_w));
-		cv::createTrackbar("Height", title, &scroll_h, (image.rows - win_h));
+		cv::setMouseCallback(title, [](int event, int x, int y, int flags, void* userdata)
+		{
+			*(int*)userdata = (event == cv::EVENT_MOUSEWHEEL ? int(float(-cv::getMouseWheelDelta(flags)) * 0.5f) : 0);
+		}, &wheel_delta);
 
-		do cv::imshow(title, image(cv::Rect(scroll_w, scroll_h, win_w, win_h)));
+		do
+		{
+			cv::imshow(title, img(cv::Rect(scroll_w, scroll_h, win_w, win_h)));
+
+			if (GetAsyncKeyState(VK_LCONTROL) & 0x8000)
+				scroll_w = std::clamp(scroll_w + wheel_delta, 0, img.cols - win_w);
+			else scroll_h = std::clamp(scroll_h + wheel_delta, 0, img.rows - win_h);
+
+			wheel_delta = 0;
+		}
 		while (cv::waitKey(1) != VK_ESCAPE && cv::getWindowProperty(title, cv::WND_PROP_VISIBLE));
 
 		cv::destroyWindow(title);
