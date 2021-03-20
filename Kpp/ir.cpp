@@ -1,6 +1,5 @@
 #include <defs.h>
 
-#include "dom_tree.h"
 #include "ir.h"
 
 #include "gv.h"
@@ -13,24 +12,24 @@ namespace kpp::ir
 	{
 		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
 
-		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto param) { return param->get_value(); });
+		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto param) { return param->get_value_str(); });
 
 		PRINT_NL;
 	}
 
 	void StackAlloc::print()
 	{
-		PRINT_TABS_NL(C_YELLOW, 1, value + " = stackalloc " + STRINGIFY_TYPE(ty));
+		PRINT_TABS_NL(C_YELLOW, 1, value->name + " = stackalloc " + STRINGIFY_TYPE(ty));
 	}
 
 	void Store::print()
 	{
-		PRINT_TABS_NL(C_RED, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value());
+		PRINT_TABS_NL(C_RED, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value->name + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value_str());
 	}
 
 	void Load::print()
 	{
-		PRINT_TABS_NL(C_GREEN, 1, dest_value + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + value->name);
+		PRINT_TABS_NL(C_GREEN, 1, value->name + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + vid->get_value_str());
 	}
 
 	void ValueInt::print()
@@ -40,12 +39,12 @@ namespace kpp::ir
 
 	void BinaryOp::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_BINARY_OP(op) + " " + left->get_value() + ", " + right->get_value());
+		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + STRINGIFY_BINARY_OP(op) + " " + left->get_value_str() + ", " + right->get_value_str());
 	}
 
 	void UnaryOp::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value + " = " + STRINGIFY_UNARY_OP(op) + " " + operand->get_value());
+		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + STRINGIFY_UNARY_OP(op) + " " + operand->get_value_str());
 	}
 
 	void Block::print()
@@ -65,22 +64,22 @@ namespace kpp::ir
 	{
 		if (!target_if_true || !target_if_false)
 		{
-			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value());
+			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value_str());
 		}
 		else
 		{
-			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value() + ", " + target_if_true->get_value() + ", " + target_if_false->get_value());
+			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value_str() + ", " + target_if_true->name + ", " + target_if_false->name);
 		}
 	}
 
 	void Branch::print()
 	{
-		PRINT_TABS_NL(C_BLUE, 1, "branch " + target->get_value());
+		PRINT_TABS_NL(C_BLUE, 1, "branch " + target->name);
 	}
 
 	void Return::print()
 	{
-		PRINT_TABS_NL(C_BLUE, 1, "ret " + get_value());
+		PRINT_TABS_NL(C_BLUE, 1, "ret " + (value ? value->name : "void"));
 	}
 }
 
@@ -327,9 +326,9 @@ ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
 {
 	auto value_int = new ir::ValueInt();
 
-	value_int->value = expr->value;
+	value_int->int_val = expr->value;
 	value_int->ty = expr->ty;
-	value_int->name = pi.add_value(expr->get_name(), value_int);
+	value_int->value = pi.add_value(expr->get_name(), value_int);
 
 	pi.add_item(value_int);
 
@@ -375,11 +374,11 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 	auto value_id = new ir::ValueId();
 
-	value_id->name = value_to_load->get_value();
+	value_id->value = value_to_load->get_value();
 
-	load->value = value_id;
+	load->vid = value_id;
 	load->ty = expr->ty;
-	load->dest_value = pi.add_value(expr->name, load);
+	load->value = pi.add_value(expr->name, load);
 
 	pi.add_item(load);
 

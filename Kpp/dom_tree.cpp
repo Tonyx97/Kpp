@@ -57,7 +57,6 @@ void dom_tree::build()
 
 			for (const auto& p : std::span(b->refs).subspan(1))
 				if (auto dom = get_dom(p))
-
 					new_idom = intersect(p, new_idom);
 
 			if (auto bdom = get_dom(b); bdom != new_idom)

@@ -2,6 +2,8 @@
 
 #include "ast.h"
 
+#include "dom_tree.h"
+
 namespace kpp
 {
 	namespace ir
@@ -23,6 +25,8 @@ namespace kpp
 			INS_BRANCH,
 			INS_RETURN,
 		};
+
+		struct Value;
 		
 		/*
 		* Instruction
@@ -33,7 +37,16 @@ namespace kpp
 			
 			virtual void print() = 0;
 			virtual Token get_type() = 0;
-			virtual std::string get_value() = 0;
+			virtual Value* get_value() = 0;
+			virtual std::string get_value_str() = 0;
+		};
+
+		/*
+		* Value
+		*/
+		struct Value
+		{
+			std::string name;
 		};
 
 		/*
@@ -47,7 +60,9 @@ namespace kpp
 
 			Token get_type() override				{ return TOKEN_NONE; }
 
-			std::string get_value() override		{ return {}; }
+			Value* get_value() override				{ return nullptr; }
+			
+			std::string get_value_str() override	{ return {}; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BODY; }
 		};
@@ -57,9 +72,9 @@ namespace kpp
 		*/
 		struct ValueInt : public Instruction
 		{
-			std::string name;
+			Value* value = nullptr;
 
-			Int value {};
+			Int int_val {};
 
 			Token ty = TOKEN_NONE;
 
@@ -69,8 +84,9 @@ namespace kpp
 			
 			Token get_type() override				{ return ty; }
 
-			//std::string get_value() override		{ return name; }
-			std::string get_value() override		{ return std::to_string(value.i64); }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return std::to_string(int_val.i64); }
 
 			static bool check_class(Instruction* i) { return i->type == INS_VALUE_INT; }
 		};
@@ -80,7 +96,7 @@ namespace kpp
 		*/
 		struct ValueId : public Instruction
 		{
-			std::string name;
+			Value* value = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -90,7 +106,9 @@ namespace kpp
 
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return name; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_VALUE_ID; }
 		};
@@ -100,14 +118,13 @@ namespace kpp
 		*/
 		struct BinaryOp : public Instruction
 		{
-			std::string value;
+			Value* value = nullptr;
 			
-			Instruction* left = nullptr;
+			Instruction* left = nullptr,
+					   * right = nullptr;
 
 			Token op = TOKEN_NONE,
 				  ty = TOKEN_NONE;
-
-			Instruction* right = nullptr;
 
 			BinaryOp()								{ type = INS_BINARY_OP; }
 
@@ -115,7 +132,9 @@ namespace kpp
 
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return value; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BINARY_OP; }
 		};
@@ -125,7 +144,7 @@ namespace kpp
 		*/
 		struct UnaryOp : public Instruction
 		{
-			std::string value;
+			Value* value = nullptr;
 
 			Instruction* operand = nullptr;
 
@@ -138,7 +157,9 @@ namespace kpp
 
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return value; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_UNARY_OP; }
 		};
@@ -158,7 +179,9 @@ namespace kpp
 
 			Token get_type() override				{ return TOKEN_NONE; }
 
-			std::string get_value() override		{ return {}; }
+			Value* get_value() override				{ return nullptr; }
+			
+			std::string get_value_str() override	{ return {}; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_CALL; }
 		};
@@ -168,7 +191,7 @@ namespace kpp
 		*/
 		struct StackAlloc : public Instruction
 		{
-			std::string value;
+			Value* value = nullptr;
 
 			Token ty;
 
@@ -178,7 +201,9 @@ namespace kpp
 			
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return value; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_STACK_ALLOC; }
 		};
@@ -188,7 +213,7 @@ namespace kpp
 		*/
 		struct Store : public Instruction
 		{
-			std::string value;
+			Value* value = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -200,7 +225,9 @@ namespace kpp
 			
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return value; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 			
 			static bool check_class(Instruction* i) { return i->type == INS_STORE; }
 		};
@@ -210,9 +237,9 @@ namespace kpp
 		*/
 		struct Load : public Instruction
 		{
-			std::string dest_value;
+			Value* value = nullptr;
 
-			ValueId* value = nullptr;
+			ValueId* vid = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -222,7 +249,9 @@ namespace kpp
 
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return dest_value; }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_LOAD; }
 		};
@@ -236,9 +265,9 @@ namespace kpp
 
 			std::vector<Block*> refs;
 
-			using items_it = decltype(items)::iterator;
-
 			std::string name;
+
+			using items_it = decltype(items)::iterator;
 
 			Block* prev = nullptr,
 				 * next = nullptr;
@@ -267,7 +296,9 @@ namespace kpp
 
 			Token get_type() override				{ return TOKEN_NONE; }
 
-			std::string get_value() override		{ return name; }
+			Value* get_value() override				{ return nullptr; }
+			
+			std::string get_value_str() override	{ return name; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BLOCK; }
 		};
@@ -288,7 +319,9 @@ namespace kpp
 
 			Token get_type() override				{ return comparison->get_type(); }
 
-			std::string get_value() override		{ return comparison->get_value(); }
+			Value* get_value() override				{ return comparison->get_value(); }
+			
+			std::string get_value_str() override	{ return {}; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BRANCH_COND; }
 		};
@@ -306,7 +339,9 @@ namespace kpp
 
 			Token get_type() override				{ return target->get_type(); }
 
-			std::string get_value() override		{ return target->get_value(); }
+			Value* get_value() override				{ return target->get_value(); }
+			
+			std::string get_value_str() override	{ return target ? target->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_BRANCH; }
 		};
@@ -316,6 +351,8 @@ namespace kpp
 		*/
 		struct Return : public Instruction
 		{
+			Value* value = nullptr;
+
 			Token ty = TOKEN_NONE;
 
 			Return()								{ type = INS_RETURN; }
@@ -324,7 +361,9 @@ namespace kpp
 
 			Token get_type() override				{ return ty; }
 
-			std::string get_value() override		{ return STRINGIFY_TYPE(ty); }
+			Value* get_value() override				{ return value; }
+			
+			std::string get_value_str() override	{ return value ? value->name : ""; }
 
 			static bool check_class(Instruction* i) { return i->type == INS_RETURN; }
 		};
@@ -388,7 +427,6 @@ namespace kpp
 
 		struct prototype_info
 		{
-			
 			std::unordered_map<std::string, Instruction*> values,
 														  values_real_name_lookup;
 
@@ -467,12 +505,16 @@ namespace kpp
 				return (it != values_real_name_lookup.end() ? it->second : nullptr);
 			}
 
-			std::string add_value(const std::string& name, Instruction* item)
+			Value* add_value(const std::string& name, Instruction* item)
 			{
-				auto var_name = "v" + std::to_string(values.size());
-				values.insert({ var_name, item });
+				auto value = new Value();
+
+				value->name = "v" + std::to_string(values.size());
+
+				values.insert({ value->name, item });
 				values_real_name_lookup.insert({ name, item });
-				return var_name;
+
+				return value;
 			}
 
 			Block* create_block(bool add = false)
@@ -676,9 +718,10 @@ namespace kpp
 		bool generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
 
-
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 
 		ast::Prototype* get_prototype_definition(ast::Prototype* prototype_decl);
+
+		ir::IR& get_ir_info() { return iri; }
 	};
 }

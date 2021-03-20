@@ -45,6 +45,9 @@
     <ClCompile Include="gv.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="reg_alloc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h">
@@ -84,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gv.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="reg_alloc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

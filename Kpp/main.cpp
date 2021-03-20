@@ -4,8 +4,8 @@
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"
-#include "dom_tree.h"
 #include "ir.h"
+#include "reg_alloc.h"
 
 int main(int argc, char** argv)
 {
@@ -82,9 +82,19 @@ int main(int argc, char** argv)
 
 	PRINT(C_YELLOW, "Displaying Dominance Tree...\n");
 
-	ir_gen.display_dominance_tree();
+	if (GetAsyncKeyState(VK_F2))
+		ir_gen.display_dominance_tree();
 
-	PRINT(C_CYAN, "---------- ASM ----------\n");
+	PRINT(C_CYAN, "---------- Registers Allocation ----------\n");
+
+	kpp::reg_alloc reg_alloc(ir_gen.get_ir_info());
+
+	{
+		PROFILE("Regs Allocation Time");
+		reg_alloc.allocate_all();
+	}
+
+	PRINT(C_CYAN, "\n---------- ASM ----------\n");
 
 	{
 		PROFILE("ASM Generation Time");

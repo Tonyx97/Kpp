@@ -20,6 +20,7 @@
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="lexer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="reg_alloc.cpp" />
     <ClCompile Include="semantic.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -33,6 +34,7 @@
     <ClInclude Include="parser.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lexer.h" />
+    <ClInclude Include="reg_alloc.h" />
     <ClInclude Include="rtti.h" />
     <ClInclude Include="semantic.h" />
     <ClInclude Include="utils.h" />
