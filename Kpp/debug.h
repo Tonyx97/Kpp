@@ -169,7 +169,10 @@ namespace dbg
 			return;
 
 		for (int i = 0; i < vec.size() - 1; ++i)
-			dbg::make_text(color, "%s%s", fn(static_cast<Tx*>(vec[i])).c_str(), separator.c_str()).print();
+		{
+			dbg::make_text(color, "%s", fn(static_cast<Tx*>(vec[i])).c_str()).print();
+			dbg::make_text(C_WHITE, "%s", separator.c_str()).print();
+		}
 
 		dbg::make_text(color, "%s", fn(static_cast<Tx*>(vec.back())).c_str()).print();
 	}

@@ -51,6 +51,7 @@ namespace kpp
 
 			void clear()
 			{
+				versions_info.clear();
 				defs.clear();
 				uses.clear();
 				defs_by_blocks.clear();

@@ -31,37 +31,61 @@ namespace kpp::ir
 
 	void StackAlloc::print()
 	{
-		PRINT_TABS_NL(C_YELLOW, 1, value->name + " = stackalloc " + STRINGIFY_TYPE(ty));
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_GREEN, "stackalloc ");
+		PRINT(C_BLUE, STRINGIFY_TYPE(ty));
 	}
 
 	void Store::print()
 	{
-		PRINT_TABS_NL(C_RED, 1, "store " + STRINGIFY_TYPE(ty) + "* " + value->name + ", " + STRINGIFY_TYPE(operand->get_type()) + " " + operand->get_value_str());
+		PRINT_TABS(C_GREEN, 1, "store ");
+		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty) + "* ");
+		PRINT_NNL(C_YELLOW, value->name);
+		PRINT_NNL(C_WHITE, ", ");
+		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(operand->get_type()) + " ");
+		PRINT(C_YELLOW, operand->get_value_str());
 	}
 
 	void Load::print()
 	{
-		PRINT_TABS_NL(C_GREEN, 1, value->name + " = load " + STRINGIFY_TYPE(ty) + ", " + STRINGIFY_TYPE(ty) + "* " + vid->get_value_str());
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_GREEN, "load ");
+		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty));
+		PRINT_NNL(C_WHITE, ", ");
+		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty) + "* ");
+		PRINT(C_YELLOW, vid->get_value_str());
 	}
 
 	void ValueInt::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + std::to_string(int_val.i64));
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT(C_CYAN, std::to_string(int_val.i64));
 	}
 
 	void BinaryOp::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + STRINGIFY_BINARY_OP(op) + " " + left->get_value_str() + ", " + right->get_value_str());
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_GREEN, STRINGIFY_BINARY_OP(op) + " ");
+		PRINT_NNL(C_YELLOW, left->get_value_str());
+		PRINT_NNL(C_WHITE, ", ");
+		PRINT(C_YELLOW, right->get_value_str());
 	}
 
 	void UnaryOp::print()
 	{
-		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + STRINGIFY_UNARY_OP(op) + " " + operand->get_value_str());
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_GREEN, STRINGIFY_UNARY_OP(op) + " ");
+		PRINT(C_YELLOW, operand->get_value_str());
 	}
 
 	void Block::print()
 	{
-		//PRINT_NNL(C_WHITE, "(%i) ", index);
+		PRINT_NL;
 
 		if (!refs.empty())
 		{
@@ -99,48 +123,63 @@ namespace kpp::ir
 
 	void BranchCond::print()
 	{
+		PRINT_TABS(C_BLUE, 1, "bcond ");
+
 		if (!target_if_true || !target_if_false)
 		{
-			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value_str());
+			PRINT_NNL(C_BLUE, STRINGIFY_TYPE(get_type()) + " ");
+			PRINT(C_YELLOW, comparison->get_value_str());
 		}
 		else
 		{
-			PRINT_TABS_NL(C_BLUE, 1, "bcond " + STRINGIFY_TYPE(get_type()) + " " + comparison->get_value_str() + ", " + target_if_true->name + ", " + target_if_false->name);
+			PRINT_NNL(C_BLUE, STRINGIFY_TYPE(get_type()) + " ");
+			PRINT_NNL(C_YELLOW, comparison->get_value_str());
+			PRINT_NNL(C_WHITE, ", ");
+			PRINT_NNL(C_WHITE, target_if_true->name);
+			PRINT_NNL(C_WHITE, ", ");
+			PRINT(C_WHITE, target_if_false->name);
 		}
 	}
 
 	void Branch::print()
 	{
-		PRINT_TABS_NL(C_BLUE, 1, "branch " + target->name);
+		PRINT_TABS(C_GREEN, 1, "branch ");
+		PRINT(C_YELLOW, target->name);
 	}
 
 	void Return::print()
 	{
-		PRINT_TABS_NL(C_BLUE, 1, "ret " + (value ? value->name : "void"));
+		PRINT_TABS(C_GREEN, 1, "ret ");
+		if (value)
+			PRINT(C_YELLOW, value->name);
+		else PRINT(C_BLUE, "void");
 	}
 
 	void Phi::print()
 	{
+		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_GREEN, "phi");
+		PRINT_NNL(C_WHITE, "(");
+
 		if (values.empty())
 		{
 			auto original_val = value->original ? value->original : value;
 
-			PRINT_TABS(C_DARK_GREY, 1, value->name + " = phi(");
-			dbg::print_vec<ir::Block>(C_WHITE, blocks, ", ", [&](auto p)
+			dbg::print_vec<ir::Block>(C_DARK_GREY, blocks, ", ", [&](auto p)
 			{
-					return original_val->name + "." + p->name;
+				return original_val->name + "." + p->name;
 			});
-			PRINT(C_DARK_GREY, ")");
 		}
 		else
 		{
-			PRINT_TABS(C_DARK_GREY, 1, value->name + " = phi(");
-			dbg::print_set<ir::Value>(C_WHITE, values, ", ", [&](auto p)
+			dbg::print_set<ir::Value>(C_DARK_GREY, values, ", ", [&](auto p)
 			{
 				return p->name;
 			});
-			PRINT(C_DARK_GREY, ")");
 		}
+
+		PRINT(C_WHITE, ")");
 	}
 }
 

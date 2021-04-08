@@ -357,7 +357,7 @@ namespace kpp
 			
 			Value* value = nullptr;
 
-			Phi()										{ type = INS_PHI; }
+			Phi(Value* value) : value(value)			{ type = INS_PHI; }
 
 			void add_block(Block* b)					{ blocks.push_back(b); }
 			void add_value(Value* v)					{ values.insert(v); }

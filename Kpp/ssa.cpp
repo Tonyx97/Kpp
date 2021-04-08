@@ -378,13 +378,7 @@ bool ssa_gen::insert_phis()
 			if (!ctx.lives[b].in.contains(v))
 				continue;
 
-			PRINT_NNL(C_CYAN, "'%s' phi should be inserted in = { ", v->name.c_str());
-			dbg::print_set<ir::Value*>(C_GREEN, blocks, ", ", [](auto p) { return p->name; });
-			PRINT(C_CYAN, " }");
-
-			auto phi = new ir::Phi();
-
-			phi->value = v;
+			auto phi = new ir::Phi(v);
 
 			for (const auto& predecessor : b->refs)
 				phi->add_block(predecessor);
@@ -392,8 +386,6 @@ bool ssa_gen::insert_phis()
 			b->add_phi(phi);
 		}
 	}
-
-	PRINT_NL;
 
 	return true;
 }
