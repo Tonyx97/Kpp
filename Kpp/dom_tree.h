@@ -17,6 +17,8 @@ namespace kpp
 		std::unordered_map<ir::Block*, ir::Block*> doms;
 
 		std::vector<dom_pair> ordered_doms;
+
+		std::unordered_set<ir::Block*> checked_blocks;
 		
 		std::vector<ir::Block*> reversed_postorder;
 
@@ -32,11 +34,11 @@ namespace kpp
 		dom_tree(ir::Prototype* prototype, ir::Block* entry) : prototype(prototype), entry(entry) {}
 
 		void build();
-		void set_dom(ir::Block* v, ir::Block* dom);
+		void set_dom(ir::Block* b, ir::Block* dom);
 		void print();
 
 		ir::Block* intersect(ir::Block* b1, ir::Block* b2);
-		ir::Block* get_dom(ir::Block* v);
+		ir::Block* get_dom(ir::Block* b);
 		ir::Block* get_entry() const	{ return entry; }
 
 		const auto& get_doms()			{ return doms; }

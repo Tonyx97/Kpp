@@ -24,20 +24,33 @@ namespace kpp
 			INS_BRANCH_COND,
 			INS_BRANCH,
 			INS_RETURN,
+			INS_PHI,
 		};
 
 		struct Value;
+		struct Block;
+
+		using ValueFn = const std::function<Value*(Value*)>&;
+		using BlockFn = const std::function<void(Block*)>&;
 		
 		/*
 		* Instruction
 		*/
 		struct Instruction
 		{
+			Block* block_owner = nullptr;
+			
 			InsType type = INS_UNKNOWN;
+
+			int index = -1;
 			
 			virtual void print() = 0;
+			virtual void for_each_lvalue(ValueFn fn) = 0;
+			virtual void for_each_rvalue(ValueFn fn) = 0;
+			virtual void for_each_value(ValueFn fn) = 0;
 			virtual Token get_type() = 0;
 			virtual Value* get_value() = 0;
+			virtual void set_value(Value* v) = 0;
 			virtual std::string get_value_str() = 0;
 		};
 
@@ -47,6 +60,21 @@ namespace kpp
 		struct Value
 		{
 			std::string name;
+
+			Block* block_owner = nullptr;
+
+			Instruction* definer = nullptr;
+
+			Value* original = nullptr;
+
+			int versions = 0;
+			
+			bool real_var = false,
+				 in_memory = false;
+
+			bool has_versions() const			{ return versions > 0; }
+
+			Value* create_new();
 		};
 
 		/*
@@ -54,17 +82,23 @@ namespace kpp
 		*/
 		struct Body : public Instruction
 		{
-			Body()									{ type = INS_BODY; }
+			Body()										{ type = INS_BODY; }
 
-			void print() override					{}
-
-			Token get_type() override				{ return TOKEN_NONE; }
-
-			Value* get_value() override				{ return nullptr; }
+			void print() override						{}
 			
-			std::string get_value_str() override	{ return {}; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{}
 
-			static bool check_class(Instruction* i) { return i->type == INS_BODY; }
+			Token get_type() override					{ return TOKEN_NONE; }
+
+			Value* get_value() override					{ return nullptr; }
+
+			void set_value(Value* v) override			{}
+			
+			std::string get_value_str() override		{ return {}; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_BODY; }
 		};
 
 		/*
@@ -78,17 +112,24 @@ namespace kpp
 
 			Token ty = TOKEN_NONE;
 
-			ValueInt()								{ type = INS_VALUE_INT; }
+			ValueInt()									{ type = INS_VALUE_INT; }
 
 			void print() override;
 			
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
 			
-			std::string get_value_str() override	{ return std::to_string(int_val.i64); }
+			Token get_type() override					{ return ty; }
 
-			static bool check_class(Instruction* i) { return i->type == INS_VALUE_INT; }
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value->name; }
+			//std::string get_value_str() override		{ return std::to_string(int_val.i64); }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_VALUE_INT; }
 		};
 
 		/*
@@ -100,17 +141,23 @@ namespace kpp
 
 			Token ty = TOKEN_NONE;
 
-			ValueId()								{ type = INS_VALUE_ID; }
+			ValueId()									{ type = INS_VALUE_ID; }
 
-			void print() override					{}
-
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
+			void print() override						{}
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
 
-			static bool check_class(Instruction* i) { return i->type == INS_VALUE_ID; }
+			Token get_type() override					{ return ty; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_VALUE_ID; }
 		};
 
 		/*
@@ -126,17 +173,30 @@ namespace kpp
 			Token op = TOKEN_NONE,
 				  ty = TOKEN_NONE;
 
-			BinaryOp()								{ type = INS_BINARY_OP; }
+			BinaryOp()									{ type = INS_BINARY_OP; }
 
 			void print() override;
-
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override
+			{
+				if (auto new_val = fn(left->get_value()))
+					left->set_value(new_val);
 
-			static bool check_class(Instruction* i) { return i->type == INS_BINARY_OP; }
+				if (auto new_val = fn(right->get_value()))
+					right->set_value(new_val);
+			}
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+
+			Token get_type() override					{ return ty; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_BINARY_OP; }
 		};
 
 		/*
@@ -151,17 +211,23 @@ namespace kpp
 			Token op = TOKEN_NONE,
 				  ty = TOKEN_NONE;
 
-			UnaryOp()								{ type = INS_UNARY_OP; }
+			UnaryOp()									{ type = INS_UNARY_OP; }
 
 			void print() override;
-
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(operand->get_value())) operand->set_value(new_val); }
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
 
-			static bool check_class(Instruction* i) { return i->type == INS_UNARY_OP; }
+			Token get_type() override					{ return ty; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_UNARY_OP; }
 		};
 
 		/*
@@ -173,17 +239,23 @@ namespace kpp
 
 			struct Prototype* prototype = nullptr;
 
-			Call()									{ type = INS_CALL; }
+			Call()										{ type = INS_CALL; }
 
 			void print() override;
-
-			Token get_type() override				{ return TOKEN_NONE; }
-
-			Value* get_value() override				{ return nullptr; }
 			
-			std::string get_value_str() override	{ return {}; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{}
 
-			static bool check_class(Instruction* i) { return i->type == INS_CALL; }
+			Token get_type() override					{ return TOKEN_NONE; }
+
+			Value* get_value() override					{ return nullptr; }
+			
+			void set_value(Value* v) override			{}
+			
+			std::string get_value_str() override		{ return {}; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_CALL; }
 		};
 
 		/*
@@ -195,17 +267,23 @@ namespace kpp
 
 			Token ty;
 
-			StackAlloc()							{ type = INS_STACK_ALLOC; }
+			StackAlloc()								{ type = INS_STACK_ALLOC; }
 
 			void print() override;
 			
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			Token get_type() override					{ return ty; }
 
-			static bool check_class(Instruction* i) { return i->type == INS_STACK_ALLOC; }
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_STACK_ALLOC; }
 		};
 
 		/*
@@ -219,17 +297,23 @@ namespace kpp
 
 			Instruction* operand = nullptr;
 
-			Store()									{ type = INS_STORE; }
+			Store()										{ type = INS_STORE; }
 
 			void print() override;
 			
-			Token get_type() override				{ return ty; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(operand->get_value())) operand->set_value(new_val); }
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+			
+			Token get_type() override					{ return ty; }
 
-			Value* get_value() override				{ return value; }
+			Value* get_value() override					{ return value; }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void set_value(Value* v) override			{ value = v; }
 			
-			static bool check_class(Instruction* i) { return i->type == INS_STORE; }
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+			
+			static bool check_class(Instruction* i)		{ return i->type == INS_STORE; }
 		};
 
 		/*
@@ -243,17 +327,56 @@ namespace kpp
 
 			Token ty = TOKEN_NONE;
 
-			Load()									{ type = INS_LOAD; }
+			Load()										{ type = INS_LOAD; }
 
 			void print() override;
-
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(vid->get_value())) vid->set_value(new_val); }
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
 
-			static bool check_class(Instruction* i) { return i->type == INS_LOAD; }
+			Token get_type() override					{ return ty; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_LOAD; }
+		};
+		
+		/*
+		* Phi
+		*/
+		struct Phi : public Instruction
+		{
+			std::vector<Block*> blocks;
+
+			std::unordered_set<Value*> values;
+			
+			Value* value = nullptr;
+
+			Phi()										{ type = INS_PHI; }
+
+			void add_block(Block* b)					{ blocks.push_back(b); }
+			void add_value(Value* v)					{ values.insert(v); }
+
+			void print() override;
+			
+			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
+
+			Token get_type() override					{ return TOKEN_NONE; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_PHI; }
 		};
 
 		/*
@@ -262,29 +385,37 @@ namespace kpp
 		struct Block : public Instruction
 		{
 			std::vector<Instruction*> items;
+			std::vector<Phi*> phis;
 
 			std::vector<Block*> refs;
+
+			std::unordered_set<Block*> doms;
 
 			std::string name;
 
 			using items_it = decltype(items)::iterator;
 
 			Block* prev = nullptr,
-				 * next = nullptr;
+				 * next = nullptr,
+				 * idom = nullptr;
 
 			int reverse_postorder_index = -1;
 
-			bool is_entry = false;
+			bool is_entry = false,
+				 is_last = false;
 			
-			Block()									{ type = INS_BLOCK; }
+			Block()										{ type = INS_BLOCK; }
 
-			bool is_empty() const					{ return items.empty(); }
+			bool is_empty() const						{ return items.empty(); }
 
-			void add_item(Instruction* item)		{ items.push_back(item); }
-			void add_ref(Block* block)				{ refs.push_back(block); }
+			Instruction* get_control_flow_item()		{ return (items.empty() ? nullptr : items.back()); }
+
+			void add_item(Instruction* item)			{ item->block_owner = this; items.push_back(item); }
+			void add_phi(Phi* phi)						{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
+			void add_ref(Block* block)					{ refs.push_back(block); }
 
 			void add_items(const items_it& begin, const items_it& end)
-													{ items.insert(items.end(), begin, end); }
+														{ items.insert(items.end(), begin, end); }
 
 			void fix_ref(Block* old_block, Block* new_block)
 			{
@@ -292,15 +423,24 @@ namespace kpp
 					*it = new_block;
 			}
 
+			void for_each_successor(BlockFn fn);
+			void for_each_dom(BlockFn fn);
+
 			void print() override;
-
-			Token get_type() override				{ return TOKEN_NONE; }
-
-			Value* get_value() override				{ return nullptr; }
 			
-			std::string get_value_str() override	{ return name; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{}
 
-			static bool check_class(Instruction* i) { return i->type == INS_BLOCK; }
+			Token get_type() override					{ return TOKEN_NONE; }
+
+			Value* get_value() override					{ return nullptr; }
+			
+			void set_value(Value* v) override			{}
+			
+			std::string get_value_str() override		{ return name; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_BLOCK; }
 		};
 
 		/*
@@ -313,17 +453,23 @@ namespace kpp
 			Block* target_if_true = nullptr,
 				 * target_if_false = nullptr;
 
-			BranchCond()							{ type = INS_BRANCH_COND; }
+			BranchCond()								{ type = INS_BRANCH_COND; }
 
 			void print() override;
-
-			Token get_type() override				{ return comparison->get_type(); }
-
-			Value* get_value() override				{ return comparison->get_value(); }
 			
-			std::string get_value_str() override	{ return {}; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{ if (auto new_val = fn(comparison->get_value())) comparison->set_value(new_val); }
 
-			static bool check_class(Instruction* i) { return i->type == INS_BRANCH_COND; }
+			Token get_type() override					{ return comparison->get_type(); }
+
+			Value* get_value() override					{ return comparison->get_value(); }
+			
+			void set_value(Value* v) override			{ comparison->set_value(v); }
+			
+			std::string get_value_str() override		{ return {}; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_BRANCH_COND; }
 		};
 
 		/*
@@ -333,17 +479,23 @@ namespace kpp
 		{
 			Block* target = nullptr;
 
-			Branch()								{ type = INS_BRANCH; }
+			Branch()									{ type = INS_BRANCH; }
 
 			void print() override;
-
-			Token get_type() override				{ return target->get_type(); }
-
-			Value* get_value() override				{ return target->get_value(); }
 			
-			std::string get_value_str() override	{ return target ? target->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_value(ValueFn fn) override	{}
 
-			static bool check_class(Instruction* i) { return i->type == INS_BRANCH; }
+			Token get_type() override					{ return target->get_type(); }
+
+			Value* get_value() override					{ return target->get_value(); }
+			
+			void set_value(Value* v) override			{ target->set_value(v); }
+			
+			std::string get_value_str() override		{ return target ? target->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_BRANCH; }
 		};
 
 		/*
@@ -355,17 +507,28 @@ namespace kpp
 
 			Token ty = TOKEN_NONE;
 
-			Return()								{ type = INS_RETURN; }
+			Return()									{ type = INS_RETURN; }
 
 			void print() override;
-
-			Token get_type() override				{ return ty; }
-
-			Value* get_value() override				{ return value; }
 			
-			std::string get_value_str() override	{ return value ? value->name : ""; }
+			void for_each_lvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override
+			{ 
+				if (value)
+					if (auto new_val = fn(value))
+						value = new_val;
+			}
+			void for_each_value(ValueFn fn) override	{ for_each_rvalue(fn); }
 
-			static bool check_class(Instruction* i) { return i->type == INS_RETURN; }
+			Token get_type() override					{ return ty; }
+
+			Value* get_value() override					{ return value; }
+			
+			void set_value(Value* v) override			{ value = v; }
+			
+			std::string get_value_str() override		{ return value ? value->name : ""; }
+
+			static bool check_class(Instruction* i)		{ return i->type == INS_RETURN; }
 		};
 
 		struct PrototypeParam
@@ -379,8 +542,8 @@ namespace kpp
 
 		struct Prototype
 		{
-			std::unordered_map<std::string, Instruction*> values;
-			std::unordered_map<std::string, Instruction*> values_real_name_lookup;
+			std::unordered_map<std::string, Value*> values,
+													values_real_name_lookup;
 
 			std::vector<PrototypeParam*> params;
 
@@ -405,7 +568,7 @@ namespace kpp
 			void add_param(PrototypeParam* param)	{ params.push_back(param); }
 			
 			Block* get_entry_block()				{ return (blocks.empty() ? nullptr : blocks[0]); }
-			Block* get_last_block()					{ return (blocks.empty() ? nullptr : blocks.back()); }
+			Block* get_exit_block()					{ return (blocks.empty() ? nullptr : blocks.back()); }
 			Block* get_second_last_block()			{ return (blocks.empty() ? nullptr : *(blocks.rbegin() + 1)); }
 		};
 
@@ -419,38 +582,38 @@ namespace kpp
 			Block* if_block = nullptr,
 				 * else_block = nullptr;
 
-			void clear()
-			{
-				if_block = else_block = nullptr;
-			}
+			void clear() { if_block = else_block = nullptr; }
 		};
 
 		struct prototype_info
 		{
-			std::unordered_map<std::string, Instruction*> values,
-														  values_real_name_lookup;
+			std::unordered_map<std::string, Value*> values,
+													values_real_name_lookup;
 
 			std::unordered_map<std::string, Block*> blocks_map;
 
 			std::vector<Block*> blocks;
 
-			size_t curr_block_num = 0;
+			if_context if_context {};
 
 			Prototype* curr_prototype = nullptr;
-
-			if_context if_context {};
 
 			Block* curr_block = nullptr;
 
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
 
+			int curr_block_index = 0,
+				curr_item_index = 0,
+				curr_temp_var_index = 0;
+
 			void clear()
 			{
 				curr_prototype = nullptr;
 				curr_block = nullptr;
 
-				stack_size = aligned_stack_size = curr_block_num = 0;
+				stack_size = aligned_stack_size = 0;
+				curr_block_index = curr_item_index = curr_temp_var_index = 0;
 
 				values.clear();
 				values_real_name_lookup.clear();
@@ -477,6 +640,8 @@ namespace kpp
 
 			void add_item(Instruction* item)
 			{
+				item->index = curr_item_index++;
+
 				curr_block->add_item(item);
 			}
 
@@ -499,7 +664,7 @@ namespace kpp
 					blocks.erase(it);
 			}
 
-			Instruction* get_value_from_real_name(const std::string& name)
+			Value* get_value_from_real_name(const std::string& name)
 			{
 				auto it = values_real_name_lookup.find(name);
 				return (it != values_real_name_lookup.end() ? it->second : nullptr);
@@ -509,10 +674,18 @@ namespace kpp
 			{
 				auto value = new Value();
 
-				value->name = "v" + std::to_string(values.size());
+				value->block_owner = curr_block;
+				value->definer = item;
 
-				values.insert({ value->name, item });
-				values_real_name_lookup.insert({ name, item });
+				if (rtti::safe_cast<StackAlloc>(item))
+				{
+					value->name = name;
+					value->real_var = value->in_memory = true;
+				}
+				else value->name = "v" + std::to_string(curr_temp_var_index++);
+
+				values.insert({ value->name, value });
+				values_real_name_lookup.insert({ name, value });
 
 				return value;
 			}
@@ -584,7 +757,7 @@ namespace kpp
 			void add_block(Block* block)
 			{
 				if (curr_block)
-					block->name = "block_" + std::to_string(++curr_block_num);
+					block->name = "block_" + std::to_string(blocks.size() + 1);
 				else
 				{
 					block->name = "entry";
@@ -599,6 +772,9 @@ namespace kpp
 					curr_block->next = block;
 				
 				curr_block = block;
+				curr_block->index = curr_block_index++;
+
+				curr_item_index = 0;
 			}
 
 			Branch* create_branch(Block* block = nullptr, Block* target = nullptr)
@@ -698,8 +874,6 @@ namespace kpp
 		void print_prototype(ir::Prototype* prototype);
 		void print_block(ir::Block* block);
 		void print_item(ir::Instruction* item);
-		void build_dominance_trees();
-		void display_dominance_tree();
 
 		void add_prototype(ir::Prototype* prototype);
 

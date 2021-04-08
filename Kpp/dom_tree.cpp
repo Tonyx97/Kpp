@@ -8,26 +8,26 @@ using namespace kpp;
 
 void dom_tree::create_reversed_postorder_list_internal(ir::Block* curr)
 {
-	if (!curr)
+	if (!curr || checked_blocks.contains(curr))
 		return;
 
-	for (const auto& item : curr->items)
-	{
-		if (auto branch = rtti::safe_cast<ir::Branch>(item))
-			create_reversed_postorder_list_internal(branch->target);
+	auto cf_item = curr->get_control_flow_item();
 
-		if (auto bcond = rtti::safe_cast<ir::BranchCond>(item))
-		{
-			create_reversed_postorder_list_internal(bcond->target_if_true);
-			create_reversed_postorder_list_internal(bcond->target_if_false);
-		}
+	if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
+		create_reversed_postorder_list_internal(branch->target);
+	else if (auto bcond = rtti::safe_cast<ir::BranchCond>(cf_item))
+	{
+		create_reversed_postorder_list_internal(bcond->target_if_true);
+		create_reversed_postorder_list_internal(bcond->target_if_false);
 	}
 
-	if (std::find(reversed_postorder.begin(), reversed_postorder.end(), curr) == reversed_postorder.end())
-	{
-		curr->reverse_postorder_index = static_cast<int>(reversed_postorder.size());
-		reversed_postorder.push_back(curr);
-	}
+	if (curr == entry)
+		return;
+
+	curr->reverse_postorder_index = static_cast<int>(reversed_postorder.size());
+
+	reversed_postorder.push_back(curr);
+	checked_blocks.insert(curr);
 }
 
 void dom_tree::create_reversed_postorder_list()
@@ -36,7 +36,7 @@ void dom_tree::create_reversed_postorder_list()
 
 	entry->reverse_postorder_index = static_cast<int>(prototype->blocks.size()) - 1;
 
-	create_reversed_postorder_list_internal(entry->next);
+	create_reversed_postorder_list_internal(entry);
 
 	std::reverse(reversed_postorder.begin(), reversed_postorder.end());
 }
@@ -67,6 +67,9 @@ void dom_tree::build()
 		}
 	}
 
+	for (const auto& [b, dom] : doms)
+		dom->doms.insert(b);
+
 	ordered_doms = decltype(ordered_doms)(doms.begin(), doms.end());
 
 	std::sort(ordered_doms.begin(), ordered_doms.end(), [&](const dom_pair& l, const dom_pair& r)
@@ -75,20 +78,27 @@ void dom_tree::build()
 	});
 }
 
-void dom_tree::set_dom(ir::Block* v, ir::Block* dom)
+void dom_tree::set_dom(ir::Block* b, ir::Block* dom)
 {
-	if (auto it = doms.find(v); it != doms.end())
+	b->idom = dom;
+
+	if (auto it = doms.find(b); it != doms.end())
 		it->second = dom;
-	else doms.insert({ v, dom });
+	else doms.insert({ b, dom });
 }
 
 void dom_tree::print()
 {
 	PRINT(C_BLUE, prototype->name + ":");
 
-	for (const auto& [v, dom] : get_doms())
+	for (const auto& [b, dom] : get_doms())
 	{
-		PRINT_TABS_NL(C_GREEN, 1, "'%s' dominates '%s'", dom->name.c_str(), v->name.c_str());
+		PRINT_TABS_NL(C_GREEN, 1, "'%s' sdom '%s'", dom->name.c_str(), b->name.c_str());
+	}
+
+	for (const auto& b : reversed_postorder)
+	{
+		PRINT_TABS_NL(C_GREEN, 1, "idom(%s) = '%s'", b->name.c_str(), b->idom->name.c_str());
 	}
 
 	PRINT_NL;
@@ -108,8 +118,8 @@ ir::Block* dom_tree::intersect(ir::Block* b1, ir::Block* b2)
 	return f1;
 }
 
-ir::Block* dom_tree::get_dom(ir::Block* v)
+ir::Block* dom_tree::get_dom(ir::Block* b)
 {
-	auto it = doms.find(v);
+	auto it = doms.find(b);
 	return (it != doms.end() ? it->second : nullptr);
 }

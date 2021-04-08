@@ -174,6 +174,43 @@ namespace dbg
 		dbg::make_text(color, "%s", fn(static_cast<Tx*>(vec.back())).c_str()).print();
 	}
 
+	template <typename Tx, typename T, typename F>
+	static inline void print_set(eColor color, const std::set<T>& set, const std::string& separator, const F& fn)
+	{
+		if (set.empty())
+		{
+			dbg::make_text(color, "EMPTY").print();
+			return;
+		}
+
+		auto set_size = set.size(),
+			 i = 0ull;
+
+		for (auto it = set.begin(); it != set.end(); ++it)
+		{
+			if (i++ == set_size - 1)
+				dbg::make_text(color, "%s", fn(*set.rbegin()).c_str()).print();
+			else dbg::make_text(color, "%s%s", fn(*it).c_str(), separator.c_str()).print();
+		}
+	}
+
+	template <typename Tx, typename T, typename F>
+	static inline void print_set(eColor color, const std::unordered_set<T>& set, const std::string& separator, const F& fn)
+	{
+		if (set.empty())
+		{
+			dbg::make_text(color, "EMPTY").print();
+			return;
+		}
+
+		auto set_size = set.size(),
+			 i = 0ull;
+
+		std::vector<T> temp { set.begin(), set.end() };
+
+		print_vec<Tx, T, F>(color, temp, separator, fn);
+	}
+
 	struct TimeProfiling
 	{
 		std::chrono::high_resolution_clock::time_point m_start;

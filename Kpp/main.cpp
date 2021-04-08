@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "semantic.h"
 #include "ir.h"
+#include "ssa.h"
 #include "reg_alloc.h"
 
 int main(int argc, char** argv)
@@ -71,23 +72,31 @@ int main(int argc, char** argv)
 
 	ir_gen.print_ir();
 
-	PRINT(C_CYAN, "---------- Dominance Trees Generation ----------\n");
+	PRINT(C_CYAN, "---------- SSA Generation ----------\n");
+
+	kpp::ssa_gen ssa_gen(ir_gen);
 
 	{
-		PROFILE("DT Time");
-		ir_gen.build_dominance_trees();
+		PROFILE("SSA Time");
+		ssa_gen.build_ssa();
 	}
 
-	PRINT(C_CYAN, "\n---------- Dominance Trees ----------\n");
+	ssa_gen.print_ssa_ir();
 
-	PRINT(C_YELLOW, "Displaying Dominance Tree...\n");
+	PRINT(C_CYAN, "\n---------- Visuals ----------\n");
 
 	if (GetAsyncKeyState(VK_F2))
-		ir_gen.display_dominance_tree();
+	{
+		auto cfg_fut = std::async(std::launch::async, &kpp::ssa_gen::display_cfg, ssa_gen);
+		auto dom_tree_fut = std::async(std::launch::async, &kpp::ssa_gen::display_dominance_tree, ssa_gen);
+
+		cfg_fut.wait();
+		dom_tree_fut.wait();
+	}
 
 	PRINT(C_CYAN, "---------- Registers Allocation ----------\n");
 
-	kpp::reg_alloc reg_alloc(ir_gen.get_ir_info());
+	kpp::reg_alloc reg_alloc(ssa_gen);
 
 	{
 		PROFILE("Regs Allocation Time");

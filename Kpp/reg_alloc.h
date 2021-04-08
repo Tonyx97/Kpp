@@ -6,14 +6,12 @@ namespace kpp
 	{
 	private:
 
-		ir::IR& ir;
+		ssa_gen& ssa;
 
 	public:
 
-		reg_alloc(ir::IR& ir) : ir(ir) {}
+		reg_alloc(ssa_gen& ssa) : ssa(ssa) {}
 
 		bool allocate_all();
-		bool simulate_control_flow_internal(ir::Block* curr_block, const std::function<void(ir::Instruction*)>& fn);
-		bool simulate_control_flow_global(ir::Prototype* prototype, ir::Block* curr_block, const std::function<void(ir::Instruction*)>& fn);
 	};
 }

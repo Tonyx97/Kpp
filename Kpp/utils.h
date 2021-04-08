@@ -1,11 +1,48 @@
 #pragma once
 
+namespace std
+{
+	template <typename T> struct hash<unordered_set<T>>
+	{
+		size_t operator()(const unordered_set<T>& v) const
+		{
+			size_t res = 0;
+			for (const auto& e : v)
+				res += std::hash<T>{}(e);
+			return res;
+		}
+	};
+
+	template <typename T> struct hash<set<T>>
+	{
+		size_t operator()(const set<T>& v) const
+		{
+			size_t res = 0;
+			for (const auto& e : v)
+				res += std::hash<T>{}(e);
+			return res;
+		}
+	};
+}
+
 namespace kpp
 {
 	namespace util
 	{
 		namespace stl
 		{
+			struct pair_hash
+			{
+				template <class T1, class T2>
+				std::size_t operator () (std::pair<T1, T2> const& pair) const
+				{
+					std::size_t h1 = std::hash<T1>()(pair.first);
+					std::size_t h2 = std::hash<T2>()(pair.second);
+
+					return h1 ^ h2;
+				}
+			};
+
 			template <typename Tx, typename Ty>
 			class zip
 			{
@@ -31,6 +68,8 @@ namespace kpp
 
 				it_tuple begin() { return { v1.begin(), v2.begin() }; }
 				it_tuple end()   { return { v1.end(), v2.end() }; }
+
+				operator bool()	 { return (v1.size() == v2.size()); }
 			};
 			
 			template <typename Tx, typename Ty>
@@ -70,6 +109,26 @@ namespace kpp
 
 				operator bool()  { return (!v1.empty() && !v2.empty()); }
 			};
+
+			template <typename T>
+			inline bool compare_unordered_sets(const std::unordered_set<T>& s1, const std::unordered_set<T>& s2)
+			{
+				/*if (s1.empty() && s2.empty())
+					return false;*/
+				
+				using type = std::unordered_set<T>;
+				return (std::hash<type>{}(s1) == std::hash<type>{}(s2));
+			}
+
+			template <typename T>
+			inline bool compare_sets(const std::set<T>& s1, const std::set<T>& s2)
+			{
+				if (s1.empty() && s2.empty())
+					return false;
+
+				using type = std::set<T>;
+				return (std::hash<type>{}(s1) == std::hash<type>{}(s2));
+			}
 		}
 
 		namespace winapi

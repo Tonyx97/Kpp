@@ -8,6 +8,18 @@ using namespace kpp;
 
 namespace kpp::ir
 {
+	Value* Value::create_new()
+	{
+		auto new_val = new Value();
+
+		memcpy(new_val, this, sizeof(*this));
+
+		new_val->name = name + "_" + std::to_string(versions);
+		new_val->original = this;
+
+		return new_val;
+	}
+
 	void Call::print()
 	{
 		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
@@ -34,7 +46,7 @@ namespace kpp::ir
 
 	void ValueInt::print()
 	{
-		//PRINT_TABS_NL(C_WHITE, 1, name + " = " + std::to_string(value.u64));
+		PRINT_TABS_NL(C_CYAN, 1, value->name + " = " + std::to_string(int_val.i64));
 	}
 
 	void BinaryOp::print()
@@ -49,6 +61,8 @@ namespace kpp::ir
 
 	void Block::print()
 	{
+		//PRINT_NNL(C_WHITE, "(%i) ", index);
+
 		if (!refs.empty())
 		{
 			PRINT_TABS(C_WHITE, 0, name + ": [refs: ");
@@ -58,6 +72,29 @@ namespace kpp::ir
 			PRINT(C_WHITE, "]");
 		}
 		else PRINT_TABS(C_WHITE, 0, name + ": [no refs]");
+	}
+
+	void Block::for_each_successor(BlockFn fn)
+	{
+		if (auto cfg_item = get_control_flow_item())
+		{
+			if (auto branch = rtti::safe_cast<Branch>(cfg_item))
+				fn(branch->target);
+			else if (auto bcond = rtti::safe_cast<BranchCond>(cfg_item))
+			{
+				fn(bcond->target_if_true);
+				fn(bcond->target_if_false);
+			}
+		}
+	}
+
+	void Block::for_each_dom(BlockFn fn)
+	{
+		fn(this);
+
+		for (const auto& dom : doms)
+			if (dom != this)
+				dom->for_each_dom(fn);
 	}
 
 	void BranchCond::print()
@@ -80,6 +117,30 @@ namespace kpp::ir
 	void Return::print()
 	{
 		PRINT_TABS_NL(C_BLUE, 1, "ret " + (value ? value->name : "void"));
+	}
+
+	void Phi::print()
+	{
+		if (values.empty())
+		{
+			auto original_val = value->original ? value->original : value;
+
+			PRINT_TABS(C_DARK_GREY, 1, value->name + " = phi(");
+			dbg::print_vec<ir::Block>(C_WHITE, blocks, ", ", [&](auto p)
+			{
+					return original_val->name + "." + p->name;
+			});
+			PRINT(C_DARK_GREY, ")");
+		}
+		else
+		{
+			PRINT_TABS(C_DARK_GREY, 1, value->name + " = phi(");
+			dbg::print_set<ir::Value>(C_WHITE, values, ", ", [&](auto p)
+			{
+				return p->name;
+			});
+			PRINT(C_DARK_GREY, ")");
+		}
 	}
 }
 
@@ -139,60 +200,6 @@ void ir_gen::print_item(ir::Instruction* item)
 	item->print();
 }
 
-void ir_gen::build_dominance_trees()
-{
-	std::vector<dom_tree*> trees;
-
-	for (const auto& prototype : iri.prototypes)
-	{
-		auto entry = prototype->get_entry_block();
-		if (!entry)
-			return;
-
-		auto tree = prototype->dominance_tree = new dom_tree(prototype, entry);
-		if (!tree)
-			return;
-
-		tree->build();
-	}
-}
-
-void ir_gen::display_dominance_tree()
-{
-	graph::gv g("dom_tree.gv", "dom_tree");
-
-	g.set_bg_color("white");
-	g.set_font_name("Inconsolata");
-	g.set_font_size("12");
-
-	for (const auto& prototype : iri.prototypes)
-	{
-		g.set_base_name(prototype->name);
-
-		auto subg = g.create_subgraph(prototype->name);
-
-		for (const auto& [v, dom] : prototype->dominance_tree->get_ordered_doms())
-		{
-			auto node_v = g.get_node_by_name(v->name),
-				 node_dom = g.get_node_by_name(dom->name);
-
-			if (!node_v)
-				if (node_v = g.create_node(v->name, v->name, "ellipse", v->is_entry ? "cyan" : "gray", "filled"))
-					subg->add_node(node_v);
-
-			if (!node_dom)
-				if (node_dom = g.create_node(dom->name, dom->name, "ellipse", dom->is_entry ? "cyan" : "gray", "filled"))
-					subg->add_node(node_dom);
-
-			if (node_v && node_dom && v != dom)
-				node_dom->add_link(node_v);
-		}
-	}
-
-	g.build();
-	g.render("Dominance Trees");
-}
-
 void ir_gen::add_prototype(ir::Prototype* prototype)
 {
 	gi.prototypes.insert({ prototype->name, prototype });
@@ -250,6 +257,9 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	pi.clear_out_unused_blocks();
 	pi.copy_to_prototype(ir_prototype);
 	pi.clear();
+
+	if (auto last_block = ir_prototype->get_exit_block())
+		last_block->is_last = true;
 
 	return ir_prototype;
 }
@@ -312,8 +322,8 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 
 		auto store = new ir::Store();
 
-		store->value = value_to_load->get_value();
-		store->ty = value_to_load->get_type();
+		store->value = value_to_load;
+		store->ty = TOKEN_I32;		// fix me
 		store->operand = generate_from_expr(expr->value);
 
 		pi.add_item(store);
@@ -374,7 +384,7 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 	auto value_id = new ir::ValueId();
 
-	value_id->value = value_to_load->get_value();
+	value_id->value = value_to_load;
 
 	load->vid = value_id;
 	load->ty = expr->ty;
