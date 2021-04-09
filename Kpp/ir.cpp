@@ -20,6 +20,11 @@ namespace kpp::ir
 		return new_val;
 	}
 
+	void Alias::print()
+	{
+
+	}
+
 	void Call::print()
 	{
 		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
@@ -85,7 +90,8 @@ namespace kpp::ir
 
 	void Block::print()
 	{
-		PRINT_NL;
+		if (!is_entry)
+			PRINT_NL;
 
 		if (!refs.empty())
 		{
@@ -112,9 +118,10 @@ namespace kpp::ir
 		}
 	}
 
-	void Block::for_each_dom(BlockFn fn)
+	void Block::for_each_dom(DomFn fn)
 	{
-		fn(this);
+		if (!fn(this))
+			return;
 
 		for (const auto& dom : doms)
 			if (dom != this)
@@ -123,7 +130,7 @@ namespace kpp::ir
 
 	void BranchCond::print()
 	{
-		PRINT_TABS(C_BLUE, 1, "bcond ");
+		PRINT_TABS(C_GREEN, 1, "bcond ");
 
 		if (!target_if_true || !target_if_false)
 		{
@@ -166,14 +173,14 @@ namespace kpp::ir
 		{
 			auto original_val = value->original ? value->original : value;
 
-			dbg::print_vec<ir::Block>(C_DARK_GREY, blocks, ", ", [&](auto p)
+			dbg::print_vec<ir::Block>(C_YELLOW, blocks, ", ", [&](auto p)
 			{
 				return original_val->name + "." + p->name;
 			});
 		}
 		else
 		{
-			dbg::print_set<ir::Value>(C_DARK_GREY, values, ", ", [&](auto p)
+			dbg::print_set<ir::Value>(C_YELLOW, values, ", ", [&](auto p)
 			{
 				return p->name;
 			});

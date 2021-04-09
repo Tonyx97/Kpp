@@ -47,7 +47,9 @@ namespace kpp
 																 df_rec,
 																 df;
 
-			std::map<ir::Block*, life_info> lives;
+			std::map<ir::Block*, life_info> in_out;
+
+			std::unordered_set<ir::Value*> ssa_values;
 
 			void clear()
 			{
@@ -61,7 +63,7 @@ namespace kpp
 				df_local.clear();
 				df_rec.clear();
 				df.clear();
-				lives.clear();
+				in_out.clear();
 			}
 		} ctx {};
 
@@ -69,6 +71,8 @@ namespace kpp
 
 		ir_gen _ir;
 		ir::IR& ir;
+
+		bool enable_debug = false;
 
 		void walk_control_flow_preorder_block(ir::Block* block, cf_block_callback fn);
 		void walk_control_flow_postorder_block(ir::Block* block, cf_block_callback fn);
@@ -86,6 +90,8 @@ namespace kpp
 		bool build_dominance_frontier(ir::Prototype* prototype, ir::Block* entry);
 		bool insert_phis();
 		bool rename_values(ir::Block* entry);
+		bool clean_load_and_stores(ir::Block* entry);
+		bool calculate_lives(ir::Block* entry);
 
 		void print_ssa_ir();
 		void display_cfg();

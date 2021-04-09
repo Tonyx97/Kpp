@@ -12,6 +12,7 @@ namespace kpp
 		{
 			INS_UNKNOWN,
 			INS_BODY,
+			INS_ALIAS,
 			INS_VALUE_INT,
 			INS_VALUE_ID,
 			INS_BINARY_OP,
@@ -32,6 +33,7 @@ namespace kpp
 
 		using ValueFn = const std::function<Value*(Value*)>&;
 		using BlockFn = const std::function<void(Block*)>&;
+		using DomFn = const std::function<bool(Block*)>&;
 		
 		/*
 		* Instruction
@@ -55,11 +57,26 @@ namespace kpp
 		};
 
 		/*
+		* Life
+		*/
+		struct Life
+		{
+			std::vector<Block*> blocks;
+			
+			Instruction* first = nullptr,
+					   * last = nullptr;
+
+			void add_block(Block* b) { blocks.push_back(b); }
+		};
+
+		/*
 		* Value
 		*/
 		struct Value
 		{
 			std::string name;
+
+			Life life {};
 
 			Block* block_owner = nullptr;
 
@@ -68,9 +85,6 @@ namespace kpp
 			Value* original = nullptr;
 
 			int versions = 0;
-			
-			bool real_var = false,
-				 in_memory = false;
 
 			bool has_versions() const			{ return versions > 0; }
 
@@ -99,6 +113,30 @@ namespace kpp
 			std::string get_value_str() override		{ return {}; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_BODY; }
+		};
+
+		/*
+		* Alias
+		*/
+		struct Alias : public Instruction
+		{
+			Alias() { type = INS_ALIAS; }
+
+			void print() override;
+
+			void for_each_lvalue(ValueFn fn) override {}
+			void for_each_rvalue(ValueFn fn) override {}
+			void for_each_value(ValueFn fn) override {}
+
+			Token get_type() override { return TOKEN_NONE; }
+
+			Value* get_value() override { return nullptr; }
+
+			void set_value(Value* v) override {}
+
+			std::string get_value_str() override { return {}; }
+
+			static bool check_class(Instruction* i) { return i->type == INS_ALIAS; }
 		};
 
 		/*
@@ -143,7 +181,7 @@ namespace kpp
 
 			ValueId()									{ type = INS_VALUE_ID; }
 
-			void print() override						{}
+			void print() override						{};
 			
 			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
 			void for_each_rvalue(ValueFn fn) override	{}
@@ -424,7 +462,7 @@ namespace kpp
 			}
 
 			void for_each_successor(BlockFn fn);
-			void for_each_dom(BlockFn fn);
+			void for_each_dom(DomFn fn);
 
 			void print() override;
 			
@@ -676,13 +714,7 @@ namespace kpp
 
 				value->block_owner = curr_block;
 				value->definer = item;
-
-				if (rtti::safe_cast<StackAlloc>(item))
-				{
-					value->name = name;
-					value->real_var = value->in_memory = true;
-				}
-				else value->name = "v" + std::to_string(curr_temp_var_index++);
+				value->name = (rtti::safe_cast<StackAlloc>(item) ? name : "v" + std::to_string(curr_temp_var_index++));
 
 				values.insert({ value->name, value });
 				values_real_name_lookup.insert({ name, value });
