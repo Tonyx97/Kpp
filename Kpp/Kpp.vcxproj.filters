@@ -1,102 +1,123 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="ssa">
+      <UniqueIdentifier>{13878298-762b-49d4-b0b5-d95afa91d411}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ir">
+      <UniqueIdentifier>{d46cfb16-1f30-427b-9fda-4074f64aa48d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="parser">
+      <UniqueIdentifier>{a21540c6-8ee5-4b81-81fb-4649ce27d860}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lexer">
+      <UniqueIdentifier>{70cf4b01-2767-4b79-8dbe-8be4db9deea1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="semantic">
+      <UniqueIdentifier>{e211f5b9-091e-4723-aa46-1fb054a78644}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ast">
+      <UniqueIdentifier>{8dc34c2f-78d8-4afe-90ca-7e205a460b22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="reg_alloc">
+      <UniqueIdentifier>{70b48bb7-ee9a-432c-bd95-c7dfe5ffca0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="debug">
+      <UniqueIdentifier>{3a4da8f6-5c9e-4f0c-8ec0-f5cd6cd206aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{284ac6f6-5023-464e-8209-528094f5ccf7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="graph_viz">
+      <UniqueIdentifier>{65eb5e69-4df4-4c7c-bf7e-9d7077e0770a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="configs">
+      <UniqueIdentifier>{04bbc535-d07e-4ce7-b3c2-b137827606ce}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="lexer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="err_handler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ast.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="configs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ir.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="semantic.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dom_tree.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="gv.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="reg_alloc.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>ast</Filter>
     </ClCompile>
     <ClCompile Include="ssa.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>ssa</Filter>
     </ClCompile>
+    <ClCompile Include="dom_tree.cpp">
+      <Filter>ssa</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
+    <ClCompile Include="semantic.cpp">
+      <Filter>semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="lexer.cpp">
+      <Filter>lexer</Filter>
+    </ClCompile>
+    <ClCompile Include="ir.cpp">
+      <Filter>ir</Filter>
+    </ClCompile>
+    <ClCompile Include="err_handler.cpp">
+      <Filter>debug</Filter>
+    </ClCompile>
+    <ClCompile Include="reg_alloc.cpp">
+      <Filter>reg_alloc</Filter>
+    </ClCompile>
+    <ClCompile Include="gv.cpp">
+      <Filter>graph_viz</Filter>
+    </ClCompile>
+    <ClCompile Include="configs.cpp">
+      <Filter>configs</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="lexer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="parser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="err_handler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ast.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="configs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ir.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="semantic.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rtti.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.h">
-      <Filter>Header Files</Filter>
+      <Filter>ast</Filter>
     </ClInclude>
     <ClInclude Include="dom_tree.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="gv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="reg_alloc.h">
-      <Filter>Header Files</Filter>
+      <Filter>ssa</Filter>
     </ClInclude>
     <ClInclude Include="ssa.h">
-      <Filter>Header Files</Filter>
+      <Filter>ssa</Filter>
     </ClInclude>
+    <ClInclude Include="semantic.h">
+      <Filter>semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="lexer.h">
+      <Filter>lexer</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>parser</Filter>
+    </ClInclude>
+    <ClInclude Include="ir.h">
+      <Filter>ir</Filter>
+    </ClInclude>
+    <ClInclude Include="err_handler.h">
+      <Filter>debug</Filter>
+    </ClInclude>
+    <ClInclude Include="debug.h">
+      <Filter>debug</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="rtti.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="reg_alloc.h">
+      <Filter>reg_alloc</Filter>
+    </ClInclude>
+    <ClInclude Include="gv.h">
+      <Filter>graph_viz</Filter>
+    </ClInclude>
+    <ClInclude Include="configs.h">
+      <Filter>configs</Filter>
+    </ClInclude>
+    <ClInclude Include="defs.h" />
   </ItemGroup>
 </Project>
