@@ -17,6 +17,42 @@ namespace kpp
 		std::set<ir::Value*> in, out;
 	};
 
+	struct ssa_ctx
+	{
+		std::unordered_map<ir::Block*, std::unordered_map<ir::Value*, ir::Value*>> versions_info;
+
+		std::unordered_map<ir::Block*, std::set<ir::Value*>> defs,
+															 uses;
+
+		std::unordered_map<ir::Value*, std::set<ir::Block*>> defs_by_blocks,
+															 uses_by_blocks,
+															 iterative_df,
+															 phi_blocks;
+
+		std::unordered_map<ir::Block*, std::set<ir::Block*>> df_local,
+															 df_rec,
+															 df;
+
+		std::map<ir::Block*, life_info> in_out;
+
+		std::unordered_set<ir::Value*> ssa_values;
+
+		void clear()
+		{
+			versions_info.clear();
+			defs.clear();
+			uses.clear();
+			defs_by_blocks.clear();
+			uses_by_blocks.clear();
+			iterative_df.clear();
+			phi_blocks.clear();
+			df_local.clear();
+			df_rec.clear();
+			df.clear();
+			in_out.clear();
+		}
+	};
+
 	class ssa_gen
 	{
 	private:
@@ -31,46 +67,9 @@ namespace kpp
 			}
 		} wi {};
 
-		struct current_prototype_ctx
-		{
-			std::unordered_map<ir::Block*, std::unordered_map<ir::Value*, ir::Value*>> versions_info;
+		ssa_ctx ctx {};
 
-			std::unordered_map<ir::Block*, std::set<ir::Value*>> defs,
-																 uses;
-
-			std::unordered_map<ir::Value*, std::set<ir::Block*>> defs_by_blocks,
-																 uses_by_blocks,
-																 iterative_df,
-																 phi_blocks;
-
-			std::unordered_map<ir::Block*, std::set<ir::Block*>> df_local,
-																 df_rec,
-																 df;
-
-			std::map<ir::Block*, life_info> in_out;
-
-			std::unordered_set<ir::Value*> ssa_values;
-
-			void clear()
-			{
-				versions_info.clear();
-				defs.clear();
-				uses.clear();
-				defs_by_blocks.clear();
-				uses_by_blocks.clear();
-				iterative_df.clear();
-				phi_blocks.clear();
-				df_local.clear();
-				df_rec.clear();
-				df.clear();
-				in_out.clear();
-			}
-		} ctx {};
-
-		std::vector<ir::Prototype*> prototypes;
-
-		ir_gen _ir;
-		ir::IR& ir;
+		ir_gen ir;
 
 		bool enable_debug = false;
 
@@ -81,7 +80,7 @@ namespace kpp
 
 	public:
 
-		ssa_gen(ir_gen& _ir) : _ir(_ir), ir(_ir.get_ir_info()) { prototypes = ir.prototypes; }
+		ssa_gen(ir_gen& ir) : ir(ir) {}
 
 		bool build_ssa();
 		bool build_def_use(ir::Block* entry);
@@ -120,7 +119,5 @@ namespace kpp
 			case WalkType::POST_ORDER: return walk_dom_tree_postorder_block(block, fn);
 			}
 		}
-
-		const decltype(prototypes)& get_prototypes() { return prototypes; }
 	};
 }

@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="ssa">
       <UniqueIdentifier>{13878298-762b-49d4-b0b5-d95afa91d411}</UniqueIdentifier>
     </Filter>
@@ -38,86 +34,114 @@
     <Filter Include="configs">
       <UniqueIdentifier>{04bbc535-d07e-4ce7-b3c2-b137827606ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="asm">
+      <UniqueIdentifier>{101199d7-f2dd-4eec-9b78-26803fe83826}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dom_tree">
+      <UniqueIdentifier>{cda88a0f-ce40-4e78-8da9-4a97cf5a5396}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="asm\x64">
+      <UniqueIdentifier>{f33984e4-4b06-4b61-ad31-4113db08d22b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ast.cpp">
-      <Filter>ast</Filter>
-    </ClCompile>
-    <ClCompile Include="ssa.cpp">
-      <Filter>ssa</Filter>
-    </ClCompile>
-    <ClCompile Include="dom_tree.cpp">
-      <Filter>ssa</Filter>
-    </ClCompile>
-    <ClCompile Include="parser.cpp">
-      <Filter>parser</Filter>
-    </ClCompile>
-    <ClCompile Include="semantic.cpp">
-      <Filter>semantic</Filter>
-    </ClCompile>
-    <ClCompile Include="lexer.cpp">
-      <Filter>lexer</Filter>
-    </ClCompile>
-    <ClCompile Include="ir.cpp">
-      <Filter>ir</Filter>
-    </ClCompile>
-    <ClCompile Include="err_handler.cpp">
-      <Filter>debug</Filter>
-    </ClCompile>
-    <ClCompile Include="reg_alloc.cpp">
-      <Filter>reg_alloc</Filter>
-    </ClCompile>
-    <ClCompile Include="gv.cpp">
-      <Filter>graph_viz</Filter>
-    </ClCompile>
-    <ClCompile Include="configs.cpp">
-      <Filter>configs</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ast\ast.cpp">
+      <Filter>ast</Filter>
+    </ClCompile>
+    <ClCompile Include="configs\configs.cpp">
+      <Filter>configs</Filter>
+    </ClCompile>
+    <ClCompile Include="debug\err_handler.cpp">
+      <Filter>debug</Filter>
+    </ClCompile>
+    <ClCompile Include="graph_viz\gv.cpp">
+      <Filter>graph_viz</Filter>
+    </ClCompile>
+    <ClCompile Include="ir\ir.cpp">
+      <Filter>ir</Filter>
+    </ClCompile>
+    <ClCompile Include="lexer\lexer.cpp">
+      <Filter>lexer</Filter>
+    </ClCompile>
+    <ClCompile Include="dom_tree\dom_tree.cpp">
+      <Filter>dom_tree</Filter>
+    </ClCompile>
+    <ClCompile Include="parser\parser.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
+    <ClCompile Include="reg_alloc\reg_alloc.cpp">
+      <Filter>reg_alloc</Filter>
+    </ClCompile>
+    <ClCompile Include="semantic\semantic.cpp">
+      <Filter>semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="ssa\ssa.cpp">
+      <Filter>ssa</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\asm.cpp">
+      <Filter>asm</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\registers.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\x64.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ast.h">
+    <ClInclude Include="defs.h" />
+    <ClInclude Include="ast\ast.h">
       <Filter>ast</Filter>
     </ClInclude>
-    <ClInclude Include="dom_tree.h">
-      <Filter>ssa</Filter>
-    </ClInclude>
-    <ClInclude Include="ssa.h">
-      <Filter>ssa</Filter>
-    </ClInclude>
-    <ClInclude Include="semantic.h">
-      <Filter>semantic</Filter>
-    </ClInclude>
-    <ClInclude Include="lexer.h">
-      <Filter>lexer</Filter>
-    </ClInclude>
-    <ClInclude Include="parser.h">
-      <Filter>parser</Filter>
-    </ClInclude>
-    <ClInclude Include="ir.h">
-      <Filter>ir</Filter>
-    </ClInclude>
-    <ClInclude Include="err_handler.h">
-      <Filter>debug</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>debug</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="rtti.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="reg_alloc.h">
-      <Filter>reg_alloc</Filter>
-    </ClInclude>
-    <ClInclude Include="gv.h">
-      <Filter>graph_viz</Filter>
-    </ClInclude>
-    <ClInclude Include="configs.h">
+    <ClInclude Include="configs\configs.h">
       <Filter>configs</Filter>
     </ClInclude>
-    <ClInclude Include="defs.h" />
+    <ClInclude Include="debug\debug.h">
+      <Filter>debug</Filter>
+    </ClInclude>
+    <ClInclude Include="debug\err_handler.h">
+      <Filter>debug</Filter>
+    </ClInclude>
+    <ClInclude Include="graph_viz\gv.h">
+      <Filter>graph_viz</Filter>
+    </ClInclude>
+    <ClInclude Include="ir\ir.h">
+      <Filter>ir</Filter>
+    </ClInclude>
+    <ClInclude Include="lexer\lexer.h">
+      <Filter>lexer</Filter>
+    </ClInclude>
+    <ClInclude Include="dom_tree\dom_tree.h">
+      <Filter>dom_tree</Filter>
+    </ClInclude>
+    <ClInclude Include="parser\parser.h">
+      <Filter>parser</Filter>
+    </ClInclude>
+    <ClInclude Include="reg_alloc\reg_alloc.h">
+      <Filter>reg_alloc</Filter>
+    </ClInclude>
+    <ClInclude Include="semantic\semantic.h">
+      <Filter>semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="ssa\ssa.h">
+      <Filter>ssa</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\rtti.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\utils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="asm.h" />
+    <ClInclude Include="asm\asm.h">
+      <Filter>asm</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\registers.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\x64.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

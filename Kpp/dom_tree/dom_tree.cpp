@@ -2,7 +2,7 @@
 
 #include "dom_tree.h"
 
-#include "ir.h"
+#include <ir/ir.h>
 
 using namespace kpp;
 
@@ -51,11 +51,11 @@ void dom_tree::build()
 	{
 		changed = false;
 
-		for (const auto& b : reversed_postorder)
+		for (auto b : reversed_postorder)
 		{
 			auto new_idom = b->refs[0];
 
-			for (const auto& p : std::span(b->refs).subspan(1))
+			for (auto p : std::span(b->refs).subspan(1))
 				if (auto dom = get_dom(p))
 					new_idom = intersect(p, new_idom);
 
@@ -67,7 +67,7 @@ void dom_tree::build()
 		}
 	}
 
-	for (const auto& [b, dom] : doms)
+	for (auto [b, dom] : doms)
 		dom->doms.insert(b);
 
 	ordered_doms = decltype(ordered_doms)(doms.begin(), doms.end());
@@ -91,12 +91,12 @@ void dom_tree::print()
 {
 	PRINT(C_BLUE, prototype->name + ":");
 
-	for (const auto& [b, dom] : get_doms())
+	for (auto [b, dom] : get_doms())
 	{
 		PRINT_TABS_NL(C_GREEN, 1, "'%s' sdom '%s'", dom->name.c_str(), b->name.c_str());
 	}
 
-	for (const auto& b : reversed_postorder)
+	for (auto b : reversed_postorder)
 	{
 		PRINT_TABS_NL(C_GREEN, 1, "idom(%s) = '%s'", b->name.c_str(), b->idom->name.c_str());
 	}

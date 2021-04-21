@@ -1,23 +1,35 @@
 #include <defs.h>
 
-#include "ir.h"
+#include <graph_viz/gv.h>
 
-#include "gv.h"
+#include "ir.h"
 
 using namespace kpp;
 
 namespace kpp::ir
 {
+	bool dom_set_order::operator() (Block* x, Block* y) const
+	{
+		return (x->reverse_postorder_index > y->reverse_postorder_index);
+	}
+
 	Value* Value::create_new()
 	{
 		auto new_val = new Value();
 
-		memcpy(new_val, this, sizeof(*this));
+		copy_to(new_val);
 
 		new_val->name = name + "_" + std::to_string(versions);
 		new_val->original = this;
 
+		vers.insert(new_val);
+
 		return new_val;
+	}
+
+	void Value::copy_to(Value* v)
+	{
+		v->block_owner = block_owner;
 	}
 
 	void Alias::print()
@@ -118,12 +130,34 @@ namespace kpp::ir
 		}
 	}
 
-	void Block::for_each_dom(DomFn fn)
+	void Block::for_each_successor_deep(BlockRetFn fn)
+	{
+		if (auto cfg_item = get_control_flow_item())
+		{
+			if (auto branch = rtti::safe_cast<Branch>(cfg_item))
+			{
+				if (fn(branch->target))
+					branch->target->for_each_successor_deep(fn);
+			}
+			else if (auto bcond = rtti::safe_cast<BranchCond>(cfg_item))
+			{
+				if (fn(bcond->target_if_true))
+				{
+					bcond->target_if_true->for_each_successor_deep(fn);
+
+					if (fn(bcond->target_if_false))
+						bcond->target_if_false->for_each_successor_deep(fn);
+				}
+			}
+		}
+	}
+
+	void Block::for_each_dom(BlockRetFn fn)
 	{
 		if (!fn(this))
 			return;
 
-		for (const auto& dom : doms)
+		for (auto dom : doms)
 			if (dom != this)
 				dom->for_each_dom(fn);
 	}
@@ -151,7 +185,7 @@ namespace kpp::ir
 	void Branch::print()
 	{
 		PRINT_TABS(C_GREEN, 1, "branch ");
-		PRINT(C_YELLOW, target->name);
+		PRINT(C_WHITE, target->name);
 	}
 
 	void Return::print()
@@ -200,7 +234,7 @@ ir_gen::~ir_gen()
 
 void ir_gen::print_ir()
 {
-	for (auto&& prototype : iri.prototypes)
+	for (auto prototype : iri.prototypes)
 		print_prototype(prototype);
 }
 
@@ -257,7 +291,7 @@ bool ir_gen::generate()
 	if (!tree)
 		return false;
 
-	for (auto&& prototype : tree->prototypes)
+	for (auto prototype : tree->prototypes)
 		generate_prototype(prototype);
 
 	return true;
@@ -280,7 +314,7 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 	ir_prototype->name = prototype->name;
 	ir_prototype->ret_ty = prototype->ret_ty;
 
-	for (auto&& param : prototype->params)
+	for (auto param : prototype->params)
 	{
 		auto decl_or_assign = static_cast<ast::ExprDeclOrAssign*>(param);
 
@@ -314,7 +348,7 @@ ir::Body* ir_gen::generate_from_body(ast::StmtBody* body)
 {
 	auto ir_body = new ir::Body();
 
-	for (auto&& stmt : body->stmts)
+	for (auto stmt : body->stmts)
 	{
 		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))		generate_from_body(body);
 		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))		generate_from_expr(expr);
@@ -558,7 +592,7 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 	}
 
 	if (auto stmt_ifs_and_blocks = util::stl::zip_next(stmt_if->ifs, else_if_blocks))
-		for (const auto& [ast_if, _1, _2, cmp_block, next_block, end2] : stmt_ifs_and_blocks)
+		for (auto& [ast_if, _1, _2, cmp_block, next_block, end2] : stmt_ifs_and_blocks)
 		{
 			auto else_if_block = pi.create_block();
 
@@ -597,7 +631,7 @@ ast::Prototype* ir_gen::get_prototype_definition(ast::Prototype* prototype_decl)
 
 	const auto& prototype_decl_name = prototype_decl->name;
 
-	for (auto&& prototype : tree->prototypes)
+	for (auto prototype : tree->prototypes)
 		if (!prototype->name.compare(prototype_decl_name) && !prototype->is_declaration())
 			return prototype;
 

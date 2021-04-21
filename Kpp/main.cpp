@@ -1,12 +1,14 @@
 #include <defs.h>
 
-#include "err_handler.h"
-#include "lexer.h"
-#include "parser.h"
-#include "semantic.h"
-#include "ir.h"
-#include "ssa.h"
-#include "reg_alloc.h"
+#include <debug/err_handler.h>
+#include <lexer/lexer.h>
+#include <parser/parser.h>
+#include <semantic/semantic.h>
+#include <ir/ir.h>
+#include <ssa/ssa.h>
+#include <reg_alloc/reg_alloc.h>
+#include <asm/asm.h>
+#include <asm/x64/x64.h>
 
 int main(int argc, char** argv)
 {
@@ -96,18 +98,28 @@ int main(int argc, char** argv)
 
 	PRINT(C_CYAN, "---------- Registers Allocation ----------\n");
 
-	kpp::reg_alloc reg_alloc(ssa_gen);
+	kpp::x64::init_arquitecture();
+
+	kpp::reg_alloc reg_alloc(ir_gen);
+
+	reg_alloc.init();
 
 	{
 		PROFILE("Regs Allocation Time");
-		reg_alloc.allocate_all();
+		reg_alloc.calculate();
 	}
 
+	kpp::asm_gen asm_gen(ir_gen);
+
 	PRINT(C_CYAN, "\n---------- ASM ----------\n");
+
+	asm_gen.init();
 
 	{
 		PROFILE("ASM Generation Time");
 	}
+
+	kpp::x64::destroy_arquitecture();
 	
 	Sleep(500);
 

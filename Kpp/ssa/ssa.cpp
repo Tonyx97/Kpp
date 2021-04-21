@@ -1,6 +1,7 @@
 #include <defs.h>
 
-#include "ir.h"
+#include <ir/ir.h>
+
 #include "ssa.h"
 
 using namespace kpp;
@@ -9,8 +10,12 @@ bool ssa_gen::build_ssa()
 {
 	enable_debug = true;
 
-	for (const auto& prototype : ir.prototypes)
+	for (auto prototype : ir.get_ir_info().prototypes)
 	{
+		bool ok = false;
+
+		auto ctx = std::unique_ptr<ssa_ctx, std::function<void(ssa_ctx*)>>(new ssa_ctx(), [&](ssa_ctx* v) { if (!ok) delete v; });
+
 		auto entry = prototype->get_entry_block();
 		if (!entry)
 			return false;
@@ -38,6 +43,10 @@ bool ssa_gen::build_ssa()
 
 		if (!calculate_lives(entry))
 			return false;
+
+		ok = true;
+
+		prototype->ssa = ctx.get();
 	}
 
 	return true;
@@ -55,7 +64,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 		std::unordered_set<ir::Value*> defined_values,
 									   used_values;
 
-		for (const auto& i : b->items)
+		for (auto i : b->items)
 		{
 			i->for_each_lvalue([&](ir::Value* v)
 			{
@@ -91,7 +100,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 	{
 		PRINT_TABS_NL(C_RED, 1, "DEFS:");
 
-		for (const auto& [b, vset] : ctx.defs)
+		for (auto [b, vset] : ctx.defs)
 		{
 			PRINT_TABS(C_YELLOW, 2, "DEFS[%s] = { ", b->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, vset, ", ", [](auto p) { return p->name; });
@@ -100,7 +109,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 
 		PRINT_TABS_NL(C_RED, 1, "USES:");
 
-		for (const auto& [b, vset] : ctx.uses)
+		for (auto [b, vset] : ctx.uses)
 		{
 			PRINT_TABS(C_YELLOW, 2, "USES[%s] = { ", b->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, vset, ", ", [](auto p) { return p->name; });
@@ -109,7 +118,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 
 		PRINT_TABS_NL(C_RED, 1, "DEFS BY BLOCKS:");
 
-		for (const auto& [v, b] : ctx.defs_by_blocks)
+		for (auto [v, b] : ctx.defs_by_blocks)
 		{
 			PRINT_TABS(C_YELLOW, 2, "DEFS[%s] = { ", v->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, b, ", ", [](auto p) { return p->name; });
@@ -118,7 +127,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 
 		PRINT_TABS_NL(C_RED, 1, "USES BY BLOCKS:");
 
-		for (const auto& [v, b] : ctx.uses_by_blocks)
+		for (auto [v, b] : ctx.uses_by_blocks)
 		{
 			PRINT_TABS(C_YELLOW, 2, "USES[%s] = { ", v->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, b, ", ", [](auto p) { return p->name; });
@@ -139,7 +148,7 @@ bool ssa_gen::build_in_out(ir::Block* entry)
 
 	int iteration = 0;
 
-	for (int i = 0; i < 5; ++i)
+	for (int i = 0; i < 5; ++i)	// fix this
 	{
 		std::map<ir::Block*, life_info> curr_blocks_info;
 
@@ -201,7 +210,7 @@ bool ssa_gen::build_in_out(ir::Block* entry)
 
 	if (enable_debug)
 	{
-		for (const auto& [b, info] : ctx.in_out)
+		for (auto& [b, info] : ctx.in_out)
 		{
 			PRINT_TABS_NL(C_CYAN, 1, "'%s' has:", b->name.c_str());
 
@@ -253,7 +262,7 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 
 	// LOCAL calculation
 
-	for (const auto& b : prototype->blocks)
+	for (auto b : prototype->blocks)
 	{
 		b->for_each_successor([&](ir::Block* succ)
 		{
@@ -266,13 +275,13 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 
 	walk_dom_tree_by_block(WalkType::POST_ORDER, entry, [&](ir::Block* x)
 	{
-		for (const auto& z : x->doms)
-			for (const auto& y : local[z])
+		for (auto z : x->doms)
+			for (auto y : local[z])
 				if (z->idom == x && y->idom != x)
 					rec[x].insert(y);
 	});
 
-	for (const auto& b : prototype->blocks)
+	for (auto b : prototype->blocks)
 	{
 		const auto& l = local[b],
 				  & r = rec[b];
@@ -294,21 +303,21 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 		std::set_union(r.begin(), r.end(), l.begin(), l.end(), std::inserter(bdf, bdf.begin()));
 	}
 
-	for (const auto& [v, blocks] : ctx.defs_by_blocks)
+	for (auto& [v, blocks] : ctx.defs_by_blocks)
 	{
 		auto& idf = ctx.iterative_df[v],
 			  last_idf = idf;
 
 		idf.insert(entry);
 
-		for (const auto& vb : blocks)
+		for (auto vb : blocks)
 			idf.insert(vb);
 
 		std::set<ir::Block*> result;
 
-		for (int i = 0; i < 4; ++i)
+		for (int i = 0; i < 4; ++i)		// fix this
 		{
-			for (const auto& b : idf)
+			for (auto b : idf)
 			{
 				std::set<ir::Block*> new_set;
 
@@ -329,7 +338,7 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 	{
 		PRINT_TABS_NL(C_RED, 1, "DF Local:");
 
-		for (const auto& [b, df] : local)
+		for (auto [b, df] : local)
 		{
 			PRINT_TABS(C_BLUE, 2, "DF(%s) = { ", b->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, df, ", ", [](auto p) { return p->name; });
@@ -338,7 +347,7 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 
 		PRINT_TABS_NL(C_RED, 1, "DF Recursive:");
 
-		for (const auto& [b, df] : rec)
+		for (auto [b, df] : rec)
 		{
 			PRINT_TABS(C_BLUE, 2, "DF(%s) = { ", b->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, df, ", ", [](auto p) { return p->name; });
@@ -347,7 +356,7 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 
 		PRINT_TABS_NL(C_RED, 1, "DF Final:");
 
-		for (const auto& [b, df] : ctx.df)
+		for (auto [b, df] : ctx.df)
 		{
 			PRINT_TABS(C_BLUE, 2, "DF(%s) = { ", b->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, df, ", ", [](auto p) { return p->name; });
@@ -356,7 +365,7 @@ bool ssa_gen::build_dominance_frontier(ir::Prototype* prototype, ir::Block* entr
 
 		PRINT_TABS_NL(C_RED, 1, "Iterated DF:");
 
-		for (const auto& [v, blocks] : ctx.phi_blocks)
+		for (auto [v, blocks] : ctx.phi_blocks)
 		{
 			PRINT_TABS(C_BLUE, 2, "DF(%s) = { ", v->name.c_str());
 			dbg::print_set<ir::Value*>(C_GREEN, blocks, ", ", [](auto p) { return p->name; });
@@ -373,19 +382,19 @@ bool ssa_gen::insert_phis()
 {
 	PROFILE("PHI Insertion");
 
-	for (const auto& [v, blocks] : ctx.phi_blocks)
+	for (auto& [v, blocks] : ctx.phi_blocks)
 	{
 		if (blocks.empty())
 			continue;
 
-		for (const auto& b : blocks)
+		for (auto b : blocks)
 		{
 			if (!ctx.in_out[b].in.contains(v))
 				continue;
 
 			auto phi = new ir::Phi(v);
 
-			for (const auto& predecessor : b->refs)
+			for (auto predecessor : b->refs)
 				phi->add_block(predecessor);
 
 			b->add_phi(phi);
@@ -406,7 +415,7 @@ bool ssa_gen::rename_values(ir::Block* entry)
 
 	entry->for_each_dom([&](ir::Block* b)
 	{
-		for (const auto& i : b->items)
+		for (auto i : b->items)
 		{
 			if (!rtti::safe_cast<ir::Phi>(i))
 			{
@@ -453,12 +462,12 @@ bool ssa_gen::rename_values(ir::Block* entry)
 
 		b->for_each_successor([&](ir::Block* succ)
 		{
-			for (const auto& phi : succ->phis)
+			for (auto phi : succ->phis)
 			{
 				auto phi_value = phi->value;
 				auto original_val = phi_value->original ? phi_value->original : phi->value;
 
-				for (const auto& phi_b : phi->blocks)
+				for (auto phi_b : phi->blocks)
 				{
 					const auto& block_value_map = ver_info[phi_b];
 
@@ -481,9 +490,6 @@ bool ssa_gen::clean_load_and_stores(ir::Block* entry)
 {
 	PROFILE("Load And Stores Cleaning");
 
-
-
-
 	if (enable_debug)
 		PRINT_NL;
 
@@ -500,7 +506,9 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 	{
 		const auto& out = ctx.in_out[b].out;
 
-		for (const auto& i : b->items)
+		std::unordered_map<ir::Value*, ir::Instruction*> values_last_usage;
+
+		for (auto i : b->items)
 		{
 			i->for_each_lvalue([&](ir::Value* v)
 			{
@@ -511,20 +519,24 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 					v_life.first = i;
 					v_life.add_block(b);
 
-					if (!out.contains(original_val))
-						v_life.last = b->get_control_flow_item();
-					else
+					std::unordered_set<ir::Block*> visited_blocks;
+
+					if (out.contains(original_val))
 					{
-						auto dispatch_block = [&](ir::Block* dom)
+						auto dispatch_block = [&](ir::Block* sb)
 						{
-							const auto& in_out = ctx.in_out[dom];
+							if (visited_blocks.contains(sb))
+								return false;
+
+							const auto& in_out = ctx.in_out[sb];
 
 							if (!in_out.in.contains(original_val))
 								return false;
 
-							v_life.add_block(dom);
+							v_life.add_block(sb);
+							visited_blocks.insert(sb);
 
-							for (const auto& phi : dom->phis)
+							for (auto phi : sb->phis)
 								if (phi->value->original == original_val)
 								{
 									v_life.last = phi;
@@ -533,50 +545,54 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 
 							if (!in_out.out.contains(original_val))
 							{
-								v_life.last = dom->get_control_flow_item();
+								v_life.last = i;
 								return false;
 							}
 
 							return true;
 						};
 
-						auto cfg_item = b->get_control_flow_item();
-						
-						if (auto branch = rtti::safe_cast<ir::Branch>(cfg_item))
-							branch->target->for_each_dom(dispatch_block);
-						else if (auto bcond = rtti::safe_cast<ir::BranchCond>(cfg_item))
-						{
-							bcond->target_if_true->for_each_dom(dispatch_block);
-							bcond->target_if_false->for_each_dom(dispatch_block);
-						}
+						b->for_each_successor_deep(dispatch_block);
 					}
+					else v_life.last = i;
 
 					ssa_values.insert(v);
 				}
 
 				return nullptr;
 			});
+
+			i->for_each_rvalue([&](ir::Value* v)
+			{
+				values_last_usage[v] = i;
+				return nullptr;
+			});
 		}
+
+		for (auto [v, i] : values_last_usage)
+			v->life.last = i;
 	});
 
 	if (enable_debug)
 	{
-		for (const auto& v : ssa_values)
+		for (auto v : ssa_values)
 		{
 			PRINT_NNL(C_YELLOW, "'%s' lives in = { ", v->name.c_str());
 
 			if (v->life.blocks.size() == 1)
-				dbg::print_vec<ir::Block>(C_RED, v->life.blocks, ", ", [](auto p) { return p->name; });
-			else dbg::print_vec<ir::Block>(C_GREEN, v->life.blocks, ", ", [](auto p) { return p->name; });
+				dbg::print_set<ir::Block>(C_RED, v->life.blocks, ", ", [](auto p) { return p->name; });
+			else dbg::print_set<ir::Block>(C_GREEN, v->life.blocks, ", ", [](auto p) { return p->name; });
 
 			PRINT(C_YELLOW, " }");
+			
 			PRINT_TABS(C_BLUE, 1, "First instruction: ");
 			
 			v->life.first->print();
 
 			PRINT_TABS(C_BLUE, 1, "Last instruction: ");
-
-			v->life.last->print();
+			
+			if (v->life.last)
+				v->life.last->print();
 		}
 
 		PRINT_NL;
@@ -589,8 +605,8 @@ void ssa_gen::print_ssa_ir()
 {
 	PRINT_NL;
 
-	for (auto&& prototype : prototypes)
-		_ir.print_prototype(prototype);
+	for (const auto& prototype : ir.get_ir_info().prototypes)
+		ir.print_prototype(prototype);
 }
 
 void ssa_gen::display_cfg()
@@ -603,7 +619,7 @@ void ssa_gen::display_cfg()
 	g.set_font_name("Inconsolata");
 	g.set_font_size("12");
 
-	for (const auto& prototype : ir.prototypes)
+	for (auto prototype : ir.get_ir_info().prototypes)
 	{
 		auto entry = prototype->get_entry_block();
 		if (!entry)
@@ -646,7 +662,7 @@ void ssa_gen::display_dominance_tree()
 	g.set_font_name("Inconsolata");
 	g.set_font_size("12");
 
-	for (const auto& prototype : ir.prototypes)
+	for (auto prototype : ir.get_ir_info().prototypes)
 	{
 		g.set_base_name(prototype->name);
 
@@ -674,7 +690,7 @@ void ssa_gen::display_dominance_tree()
 
 void ssa_gen::walk_control_flow(ir::Block* block, cf_callback fn)
 {
-	for (const auto& i : block->items)
+	for (auto i : block->items)
 		fn(block, i);
 
 	auto cf_item = block->get_control_flow_item();
@@ -731,7 +747,7 @@ void ssa_gen::walk_dom_tree_preorder_block(ir::Block* block, cf_block_callback f
 
 	fn(block);
 
-	for (const auto& b : block->doms)
+	for (auto b : block->doms)
 		walk_dom_tree_preorder_block(b, fn);
 }
 
@@ -740,7 +756,7 @@ void ssa_gen::walk_dom_tree_postorder_block(ir::Block* block, cf_block_callback 
 	if (!wi.traversed_blocks.insert(block).second)
 		return;
 
-	for (const auto& b : block->doms)
+	for (auto b : block->doms)
 		walk_dom_tree_postorder_block(b, fn);
 
 	fn(block);

@@ -1,6 +1,6 @@
 #include <defs.h>
 
-#include "err_handler.h"
+#include <debug/err_handler.h>
 
 #include "lexer.h"
 

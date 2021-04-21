@@ -1,11 +1,14 @@
 #pragma once
 
-#include "ast.h"
+#include <ast/ast.h>
 
-#include "dom_tree.h"
+#include <dom_tree/dom_tree.h>
 
 namespace kpp
 {
+	struct reg;
+	struct ssa_ctx;
+
 	namespace ir
 	{
 		enum InsType
@@ -33,7 +36,12 @@ namespace kpp
 
 		using ValueFn = const std::function<Value*(Value*)>&;
 		using BlockFn = const std::function<void(Block*)>&;
-		using DomFn = const std::function<bool(Block*)>&;
+		using BlockRetFn = const std::function<bool(Block*)>&;
+
+		struct dom_set_order
+		{
+			bool operator() (Block* x, Block* y) const;
+		};
 		
 		/*
 		* Instruction
@@ -61,12 +69,14 @@ namespace kpp
 		*/
 		struct Life
 		{
-			std::vector<Block*> blocks;
+			std::unordered_set<Block*> blocks;
 			
 			Instruction* first = nullptr,
 					   * last = nullptr;
 
-			void add_block(Block* b) { blocks.push_back(b); }
+			void add_block(Block* b)		{ blocks.insert(b); }
+
+			bool has_block(Block* b)		{ return (std::find(blocks.begin(), blocks.end(), b) != blocks.end()); }
 		};
 
 		/*
@@ -74,6 +84,8 @@ namespace kpp
 		*/
 		struct Value
 		{
+			std::unordered_set<Value*> vers;
+
 			std::string name;
 
 			Life life {};
@@ -84,11 +96,15 @@ namespace kpp
 
 			Value* original = nullptr;
 
+			reg* r = nullptr;
+
 			int versions = 0;
 
 			bool has_versions() const			{ return versions > 0; }
 
 			Value* create_new();
+
+			void copy_to(Value* v);
 		};
 
 		/*
@@ -403,7 +419,7 @@ namespace kpp
 			void print() override;
 			
 			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{}
+			void for_each_rvalue(ValueFn fn) override	{ for (auto v : values) fn(v); }
 			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
 
 			Token get_type() override					{ return TOKEN_NONE; }
@@ -427,7 +443,9 @@ namespace kpp
 
 			std::vector<Block*> refs;
 
-			std::unordered_set<Block*> doms;
+			std::set<Block*, dom_set_order> doms;
+
+			std::unordered_set<reg*> regs_assigned;
 
 			std::string name;
 
@@ -462,7 +480,8 @@ namespace kpp
 			}
 
 			void for_each_successor(BlockFn fn);
-			void for_each_dom(DomFn fn);
+			void for_each_successor_deep(BlockRetFn fn);
+			void for_each_dom(BlockRetFn fn);
 
 			void print() override;
 			
@@ -496,8 +515,8 @@ namespace kpp
 			void print() override;
 			
 			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{ if (auto new_val = fn(comparison->get_value())) comparison->set_value(new_val); }
+			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(comparison->get_value())) comparison->set_value(new_val); }
+			void for_each_value(ValueFn fn) override	{ for_each_rvalue(fn); }
 
 			Token get_type() override					{ return comparison->get_type(); }
 
@@ -588,6 +607,8 @@ namespace kpp
 			std::vector<Block*> blocks;
 
 			dom_tree* dominance_tree = nullptr;
+
+			ssa_ctx* ssa = nullptr;
 
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;

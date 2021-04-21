@@ -1,0 +1,34 @@
+#pragma once
+
+#include <asm/x64/registers.h>
+
+namespace kpp
+{
+	struct reg_set_order
+	{
+		template <typename T> bool operator() (const T& x, const T& y) const { return (x->id < y->id); }
+	};
+	
+	class reg_alloc
+	{
+	private:
+
+		ir_gen& ir;
+
+		std::set<reg*, reg_set_order> used_regs,
+									  free_regs;
+
+	public:
+
+		reg_alloc(ir_gen& ir) : ir(ir) {}
+		~reg_alloc();
+
+		bool init();
+		bool calculate();
+		bool calculate_register_usage(ssa_ctx* ctx, ir::Block* block);
+
+		void free_reg(ir::Block* b, reg* r);
+
+		reg* alloc_reg(ir::Block* b);
+	};
+}

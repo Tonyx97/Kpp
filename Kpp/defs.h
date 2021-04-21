@@ -12,10 +12,10 @@
 #include <iomanip>
 #include <chrono>
 #include <regex>
-#include <unordered_map>
-#include <unordered_set>
-#include <map>
 #include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
 #include <list>
 #include <any>
 #include <stack>
@@ -25,10 +25,11 @@
 #include <ranges>
 #include <span>
 
-#include "debug.h"
-#include "rtti.h"
-#include "utils.h"
-#include "err_handler.h"
+#include <debug/debug.h>
+#include <debug/err_handler.h>
+
+#include <utils/rtti.h>
+#include <utils/utils.h>
 
 #ifdef _DEBUG
 #pragma comment(lib, "opencv_world451d.lib")
@@ -39,4 +40,4 @@
 #include <opencv2/opencv_modules.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "gv.h"
+#include <graph_viz/gv.h>

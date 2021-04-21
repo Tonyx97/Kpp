@@ -11,35 +11,42 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ast.cpp" />
-    <ClCompile Include="configs.cpp" />
-    <ClCompile Include="dom_tree.cpp" />
-    <ClCompile Include="err_handler.cpp" />
-    <ClCompile Include="gv.cpp" />
-    <ClCompile Include="ir.cpp" />
-    <ClCompile Include="parser.cpp" />
-    <ClCompile Include="lexer.cpp" />
+    <ClCompile Include="asm\asm.cpp" />
+    <ClCompile Include="asm\x64\registers.cpp" />
+    <ClCompile Include="asm\x64\x64.cpp" />
+    <ClCompile Include="ast\ast.cpp" />
+    <ClCompile Include="configs\configs.cpp" />
+    <ClCompile Include="debug\err_handler.cpp" />
+    <ClCompile Include="dom_tree\dom_tree.cpp" />
+    <ClCompile Include="graph_viz\gv.cpp" />
+    <ClCompile Include="ir\ir.cpp" />
+    <ClCompile Include="lexer\lexer.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="reg_alloc.cpp" />
-    <ClCompile Include="semantic.cpp" />
-    <ClCompile Include="ssa.cpp" />
+    <ClCompile Include="parser\parser.cpp" />
+    <ClCompile Include="reg_alloc\reg_alloc.cpp" />
+    <ClCompile Include="semantic\semantic.cpp" />
+    <ClCompile Include="ssa\ssa.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ast.h" />
-    <ClInclude Include="configs.h" />
-    <ClInclude Include="debug.h" />
-    <ClInclude Include="dom_tree.h" />
-    <ClInclude Include="err_handler.h" />
-    <ClInclude Include="gv.h" />
-    <ClInclude Include="ir.h" />
-    <ClInclude Include="parser.h" />
+    <ClInclude Include="asm.h" />
+    <ClInclude Include="asm\asm.h" />
+    <ClInclude Include="asm\x64\registers.h" />
+    <ClInclude Include="asm\x64\x64.h" />
+    <ClInclude Include="ast\ast.h" />
+    <ClInclude Include="configs\configs.h" />
+    <ClInclude Include="debug\debug.h" />
+    <ClInclude Include="debug\err_handler.h" />
     <ClInclude Include="defs.h" />
-    <ClInclude Include="lexer.h" />
-    <ClInclude Include="reg_alloc.h" />
-    <ClInclude Include="rtti.h" />
-    <ClInclude Include="semantic.h" />
-    <ClInclude Include="ssa.h" />
-    <ClInclude Include="utils.h" />
+    <ClInclude Include="dom_tree\dom_tree.h" />
+    <ClInclude Include="graph_viz\gv.h" />
+    <ClInclude Include="ir\ir.h" />
+    <ClInclude Include="lexer\lexer.h" />
+    <ClInclude Include="parser\parser.h" />
+    <ClInclude Include="reg_alloc\reg_alloc.h" />
+    <ClInclude Include="semantic\semantic.h" />
+    <ClInclude Include="ssa\ssa.h" />
+    <ClInclude Include="utils\rtti.h" />
+    <ClInclude Include="utils\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -83,6 +90,7 @@
     <TargetName>kpp</TargetName>
     <IncludePath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\include;$(ProjectDir);$(IncludePath)</IncludePath>
     <LibraryPath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\lib;$(LibraryPath)</LibraryPath>
+    <IntDir>$(ProjectDir)build\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -90,6 +98,7 @@
     <TargetName>kpp</TargetName>
     <IncludePath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\include;$(ProjectDir);$(IncludePath)</IncludePath>
     <LibraryPath>C:\X Stuff [FAST]\[Proyectos &amp; Utilidades]\Kpp\deps\lib;$(LibraryPath)</LibraryPath>
+    <IntDir>$(ProjectDir)build\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -130,6 +139,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

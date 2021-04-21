@@ -1,6 +1,6 @@
 #include <defs.h>
 
-#include "lexer.h"
+#include <lexer/lexer.h>
 
 #include "ast.h"
 
