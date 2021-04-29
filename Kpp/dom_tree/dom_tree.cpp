@@ -11,7 +11,7 @@ void dom_tree::create_reversed_postorder_list_internal(ir::Block* curr)
 	if (!curr || checked_blocks.contains(curr))
 		return;
 
-	auto cf_item = curr->get_control_flow_item();
+	auto cf_item = curr->get_jump_item();
 
 	if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
 		create_reversed_postorder_list_internal(branch->target);

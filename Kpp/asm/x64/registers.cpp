@@ -11,11 +11,11 @@ void x64::init_registers()
 	registers.insert({ RAX, new reg { .id = RAX, .general = false, .volatil = true } });
 	registers.insert({ RCX, new reg { .id = RCX, .general = false, .volatil = true } });
 	registers.insert({ RDX, new reg { .id = RDX, .general = false, .volatil = true } });
-	registers.insert({ RBP, new reg { .id = RBP, .general = false, .volatil = false } });
-	registers.insert({ RSP, new reg { .id = RSP, .general = false, .volatil = false } });
 	registers.insert({ RBX, new reg { .id = RBX, .general = true,  .volatil = false } });
-	registers.insert({ RDI, new reg { .id = RDI, .general = true,  .volatil = false } });
+	registers.insert({ RSP, new reg { .id = RSP, .general = false, .volatil = false } });
+	registers.insert({ RBP, new reg { .id = RBP, .general = false, .volatil = false } });
 	registers.insert({ RSI, new reg { .id = RSI, .general = true,  .volatil = false } });
+	registers.insert({ RDI, new reg { .id = RDI, .general = true,  .volatil = false } });
 	registers.insert({ R8,  new reg { .id = R8,  .general = true,  .volatil = true } });
 	registers.insert({ R9,  new reg { .id = R9,  .general = true,  .volatil = true } });
 	registers.insert({ R10, new reg { .id = R10, .general = true,  .volatil = true } });

@@ -18,6 +18,9 @@ namespace kpp
 		std::set<reg*, reg_set_order> used_regs,
 									  free_regs;
 
+		int current_usage = 0,
+			max_usage = 0;
+
 	public:
 
 		reg_alloc(ir_gen& ir) : ir(ir) {}
@@ -26,6 +29,7 @@ namespace kpp
 		bool init();
 		bool calculate();
 		bool calculate_register_usage(ssa_ctx* ctx, ir::Block* block);
+		bool undo_phis(ir::Prototype* prototype);
 
 		void free_reg(ir::Block* b, reg* r);
 

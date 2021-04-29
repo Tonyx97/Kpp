@@ -30,11 +30,16 @@ namespace kpp::ir
 	void Value::copy_to(Value* v)
 	{
 		v->block_owner = block_owner;
+		v->definer = definer;
+		v->storage_type = storage_type;
+		v->storage = storage;
 	}
 
 	void Alias::print()
 	{
-
+		PRINT_TABS(C_YELLOW, 1, op1->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT(C_YELLOW, op2->name);
 	}
 
 	void Call::print()
@@ -48,7 +53,7 @@ namespace kpp::ir
 
 	void StackAlloc::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op->name);
 		PRINT_NNL(C_WHITE, " = ");
 		PRINT_NNL(C_GREEN, "stackalloc ");
 		PRINT(C_BLUE, STRINGIFY_TYPE(ty));
@@ -58,46 +63,46 @@ namespace kpp::ir
 	{
 		PRINT_TABS(C_GREEN, 1, "store ");
 		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty) + "* ");
-		PRINT_NNL(C_YELLOW, value->name);
+		PRINT_NNL(C_YELLOW, op1->name);
 		PRINT_NNL(C_WHITE, ", ");
-		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(operand->get_type()) + " ");
-		PRINT(C_YELLOW, operand->get_value_str());
+		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(op2_i->get_type()) + " ");
+		PRINT(C_YELLOW, op2_i->get_value_str());
 	}
 
 	void Load::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
 		PRINT_NNL(C_GREEN, "load ");
 		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty));
 		PRINT_NNL(C_WHITE, ", ");
 		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty) + "* ");
-		PRINT(C_YELLOW, vid->get_value_str());
+		PRINT(C_YELLOW, op2_i->get_value_str());
 	}
 
 	void ValueInt::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
-		PRINT(C_CYAN, std::to_string(int_val.i64));
+		PRINT(C_CYAN, std::to_string(op2->storage.integer.i64));
 	}
 
 	void BinaryOp::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
-		PRINT_NNL(C_GREEN, STRINGIFY_BINARY_OP(op) + " ");
-		PRINT_NNL(C_YELLOW, left->get_value_str());
+		PRINT_NNL(C_GREEN, STRINGIFY_BINARY_OP(operation) + " ");
+		PRINT_NNL(C_YELLOW, op2_i->get_value_str());
 		PRINT_NNL(C_WHITE, ", ");
-		PRINT(C_YELLOW, right->get_value_str());
+		PRINT(C_YELLOW, op3_i->get_value_str());
 	}
 
 	void UnaryOp::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
-		PRINT_NNL(C_GREEN, STRINGIFY_UNARY_OP(op) + " ");
-		PRINT(C_YELLOW, operand->get_value_str());
+		PRINT_NNL(C_GREEN, STRINGIFY_UNARY_OP(operation) + " ");
+		PRINT(C_YELLOW, op2_i->get_value_str());
 	}
 
 	void Block::print()
@@ -118,7 +123,7 @@ namespace kpp::ir
 
 	void Block::for_each_successor(BlockFn fn)
 	{
-		if (auto cfg_item = get_control_flow_item())
+		if (auto cfg_item = get_jump_item())
 		{
 			if (auto branch = rtti::safe_cast<Branch>(cfg_item))
 				fn(branch->target);
@@ -132,7 +137,7 @@ namespace kpp::ir
 
 	void Block::for_each_successor_deep(BlockRetFn fn)
 	{
-		if (auto cfg_item = get_control_flow_item())
+		if (auto cfg_item = get_jump_item())
 		{
 			if (auto branch = rtti::safe_cast<Branch>(cfg_item))
 			{
@@ -191,21 +196,21 @@ namespace kpp::ir
 	void Return::print()
 	{
 		PRINT_TABS(C_GREEN, 1, "ret ");
-		if (value)
-			PRINT(C_YELLOW, value->name);
+		if (op)
+			PRINT(C_YELLOW, op->name);
 		else PRINT(C_BLUE, "void");
 	}
 
 	void Phi::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, value->name);
+		PRINT_TABS(C_YELLOW, 1, op->name);
 		PRINT_NNL(C_WHITE, " = ");
 		PRINT_NNL(C_GREEN, "phi");
 		PRINT_NNL(C_WHITE, "(");
 
 		if (values.empty())
 		{
-			auto original_val = value->original ? value->original : value;
+			auto original_val = op->original ? op->original : op;
 
 			dbg::print_vec<ir::Block>(C_YELLOW, blocks, ", ", [&](auto p)
 			{
@@ -376,7 +381,7 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 	{
 		auto stack_alloc = new ir::StackAlloc();
 
-		stack_alloc->value = pi.add_value(expr->name, stack_alloc);
+		stack_alloc->op = pi.add_value(expr->name, stack_alloc);
 		stack_alloc->ty = expr->ty;
 
 		pi.add_item(stack_alloc);
@@ -385,9 +390,9 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 		{
 			auto store = new ir::Store();
 
-			store->value = stack_alloc->value;
+			store->op1 = stack_alloc->op;
 			store->ty = stack_alloc->ty;
-			store->operand = generate_from_expr(expr->value);
+			store->op2_i = generate_from_expr(expr->value);
 
 			pi.add_item(store);
 		}
@@ -402,9 +407,9 @@ ir::Instruction* ir_gen::generate_from_expr_decl_or_assign(ast::ExprDeclOrAssign
 
 		auto store = new ir::Store();
 
-		store->value = value_to_load;
+		store->op1 = value_to_load;
 		store->ty = TOKEN_I32;		// fix me
-		store->operand = generate_from_expr(expr->value);
+		store->op2_i = generate_from_expr(expr->value);
 
 		pi.add_item(store);
 
@@ -416,9 +421,11 @@ ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
 {
 	auto value_int = new ir::ValueInt();
 
-	value_int->int_val = expr->value;
 	value_int->ty = expr->ty;
-	value_int->value = pi.add_value(expr->get_name(), value_int);
+	value_int->op1 = pi.add_value(expr->get_name(), value_int);
+	value_int->op2 = new ir::Value();
+	value_int->op2->storage.integer = expr->value;
+	value_int->op2->storage_type = ir::STORAGE_INTEGER;
 
 	pi.add_item(value_int);
 
@@ -429,11 +436,11 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 {
 	auto binary_op = new ir::BinaryOp();
 
-	binary_op->op = expr->op;
+	binary_op->operation = expr->op;
 	binary_op->ty = expr->ty;
-	binary_op->left = generate_from_expr(expr->left);
-	binary_op->right = generate_from_expr(expr->right);
-	binary_op->value = pi.add_value(expr->get_name(), binary_op);
+	binary_op->op2_i = generate_from_expr(expr->left);
+	binary_op->op3_i = generate_from_expr(expr->right);
+	binary_op->op1 = pi.add_value(expr->get_name(), binary_op);
 
 	pi.add_item(binary_op);
 
@@ -444,9 +451,9 @@ ir::UnaryOp* ir_gen::generate_from_expr_unary_op(ast::ExprUnaryOp* expr)
 {
 	auto unary_op = new ir::UnaryOp();
 
-	unary_op->op = expr->op;
-	unary_op->operand = generate_from_expr(expr->value);
-	unary_op->value = pi.add_value(expr->get_name(), unary_op);
+	unary_op->operation = expr->op;
+	unary_op->op2_i = generate_from_expr(expr->value);
+	unary_op->op1 = pi.add_value(expr->get_name(), unary_op);
 	unary_op->ty = expr->value->get_ty();
 
 	pi.add_item(unary_op);
@@ -464,11 +471,11 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 
 	auto value_id = new ir::ValueId();
 
-	value_id->value = value_to_load;
+	value_id->op = value_to_load;
 
-	load->vid = value_id;
+	load->op2_i = value_id;
 	load->ty = expr->ty;
-	load->value = pi.add_value(expr->name, load);
+	load->op1 = pi.add_value(expr->name, load);
 
 	pi.add_item(load);
 
@@ -567,11 +574,11 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 	{
 		auto cmp = new ir::BinaryOp();
 
-		cmp->op = TOKEN_NOT_EQUAL;
+		cmp->operation = TOKEN_NOT_EQUAL;
 		cmp->ty = id->ty;
-		cmp->left = generate_from_expr_id(id);
-		cmp->right = new ir::ValueInt();
-		cmp->value = pi.add_value(id->get_name(), cmp);
+		cmp->op2_i = generate_from_expr_id(id);
+		cmp->op3_i = new ir::ValueInt();
+		cmp->op1 = pi.add_value(id->get_name(), cmp);
 
 		pi.add_item(cmp);
 

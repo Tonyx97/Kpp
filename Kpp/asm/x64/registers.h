@@ -7,11 +7,11 @@ namespace kpp
 		RAX,
 		RCX,
 		RDX,
-		RBP,
-		RSP,
 		RBX,
-		RDI,
+		RSP,
+		RBP,
 		RSI,
+		RDI,
 		R8,
 		R9,
 		R10,
@@ -30,11 +30,11 @@ namespace kpp
 		case RAX:	return "rax";
 		case RCX:	return "rcx";
 		case RDX:	return "rdx";
-		case RBP:	return "rbp";
-		case RSP:	return "rsp";
 		case RBX:	return "rbx";
-		case RDI:	return "rdi";
+		case RSP:	return "rsp";
+		case RBP:	return "rbp";
 		case RSI:	return "rsi";
+		case RDI:	return "rdi";
 		case R8:	return "r8";
 		case R9:	return "r9";
 		case R10:	return "r10";

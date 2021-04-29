@@ -66,7 +66,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 
 		for (auto i : b->items)
 		{
-			i->for_each_lvalue([&](ir::Value* v)
+			i->for_each_left_op([&](ir::Value* v)
 			{
 				if (!used_values.contains(v))
 				{
@@ -79,7 +79,7 @@ bool ssa_gen::build_def_use(ir::Block* entry)
 				return nullptr;
 			});
 
-			i->for_each_rvalue([&](ir::Value* v)
+			i->for_each_right_op([&](ir::Value* v)
 			{
 				if (!defined_values.contains(v))
 				{
@@ -169,7 +169,7 @@ bool ssa_gen::build_in_out(ir::Block* entry)
 
 			// OUT calculation
 
-			if (auto cf_item = b->get_control_flow_item())
+			if (auto cf_item = b->get_jump_item())
 			{
 				if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
 				{
@@ -419,7 +419,7 @@ bool ssa_gen::rename_values(ir::Block* entry)
 		{
 			if (!rtti::safe_cast<ir::Phi>(i))
 			{
-				i->for_each_rvalue([&](ir::Value* v) -> ir::Value*
+				i->for_each_right_op([&](ir::Value* v) -> ir::Value*
 				{
 					auto original_val = v->original ? v->original : v;
 
@@ -449,7 +449,7 @@ bool ssa_gen::rename_values(ir::Block* entry)
 				});
 			}
 
-			i->for_each_lvalue([&](ir::Value* v)
+			i->for_each_left_op([&](ir::Value* v)
 			{
 				auto new_val = v->create_new();
 
@@ -464,8 +464,8 @@ bool ssa_gen::rename_values(ir::Block* entry)
 		{
 			for (auto phi : succ->phis)
 			{
-				auto phi_value = phi->value;
-				auto original_val = phi_value->original ? phi_value->original : phi->value;
+				auto phi_value = phi->op;
+				auto original_val = phi_value->original ? phi_value->original : phi->op;
 
 				for (auto phi_b : phi->blocks)
 				{
@@ -510,7 +510,7 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 
 		for (auto i : b->items)
 		{
-			i->for_each_lvalue([&](ir::Value* v)
+			i->for_each_left_op([&](ir::Value* v)
 			{
 				if (auto original_val = v->original)
 				{
@@ -537,7 +537,7 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 							visited_blocks.insert(sb);
 
 							for (auto phi : sb->phis)
-								if (phi->value->original == original_val)
+								if (phi->op->original == original_val)
 								{
 									v_life.last = phi;
 									return false;
@@ -562,7 +562,7 @@ bool ssa_gen::calculate_lives(ir::Block* entry)
 				return nullptr;
 			});
 
-			i->for_each_rvalue([&](ir::Value* v)
+			i->for_each_right_op([&](ir::Value* v)
 			{
 				values_last_usage[v] = i;
 				return nullptr;
@@ -693,7 +693,7 @@ void ssa_gen::walk_control_flow(ir::Block* block, cf_callback fn)
 	for (auto i : block->items)
 		fn(block, i);
 
-	auto cf_item = block->get_control_flow_item();
+	auto cf_item = block->get_jump_item();
 
 	if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
 		walk_control_flow(branch->target, fn);
@@ -711,7 +711,7 @@ void ssa_gen::walk_control_flow_preorder_block(ir::Block* block, cf_block_callba
 
 	fn(block);
 
-	auto cf_item = block->get_control_flow_item();
+	auto cf_item = block->get_jump_item();
 
 	if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
 		walk_control_flow_preorder_block(branch->target, fn);
@@ -727,7 +727,7 @@ void ssa_gen::walk_control_flow_postorder_block(ir::Block* block, cf_block_callb
 	if (!wi.traversed_blocks.insert(block).second)
 		return;
 
-	auto cf_item = block->get_control_flow_item();
+	auto cf_item = block->get_jump_item();
 
 	if (auto branch = rtti::safe_cast<ir::Branch>(cf_item))
 		walk_control_flow_postorder_block(branch->target, fn);

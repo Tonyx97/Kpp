@@ -6,6 +6,8 @@ namespace kpp
 {
 	struct Int
 	{
+		uint8_t size = 0;
+
 		union
 		{
 			uint64_t u64;
@@ -22,7 +24,7 @@ namespace kpp
 		template <typename T>
 		static Int create(T val)
 		{
-			Int obj { 0 }; obj.u64 = val;
+			Int obj { 0 }; obj.u64 = val; obj.size = sizeof(T);
 			return obj;
 		}
 	};

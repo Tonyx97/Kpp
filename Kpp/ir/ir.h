@@ -4,6 +4,8 @@
 
 #include <dom_tree/dom_tree.h>
 
+#include <asm/x64/instruction.h>
+
 namespace kpp
 {
 	struct reg;
@@ -31,6 +33,14 @@ namespace kpp
 			INS_PHI,
 		};
 
+		enum StorageType
+		{
+			STORAGE_STACK,
+			STORAGE_REGISTER,
+			STORAGE_INTEGER,
+			STORAGE_UNKNOWN,
+		};
+
 		struct Value;
 		struct Block;
 
@@ -55,9 +65,9 @@ namespace kpp
 			int index = -1;
 			
 			virtual void print() = 0;
-			virtual void for_each_lvalue(ValueFn fn) = 0;
-			virtual void for_each_rvalue(ValueFn fn) = 0;
-			virtual void for_each_value(ValueFn fn) = 0;
+			virtual void for_each_left_op(ValueFn fn) = 0;
+			virtual void for_each_right_op(ValueFn fn) = 0;
+			virtual void for_each_op(ValueFn fn) = 0;
 			virtual Token get_type() = 0;
 			virtual Value* get_value() = 0;
 			virtual void set_value(Value* v) = 0;
@@ -96,7 +106,13 @@ namespace kpp
 
 			Value* original = nullptr;
 
-			reg* r = nullptr;
+			union
+			{
+				reg* r = nullptr;
+				Int integer;
+			} storage;
+
+			StorageType storage_type = STORAGE_UNKNOWN;
 
 			int versions = 0;
 
@@ -116,9 +132,9 @@ namespace kpp
 
 			void print() override						{}
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{}
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override	{}
 
 			Token get_type() override					{ return TOKEN_NONE; }
 
@@ -136,23 +152,26 @@ namespace kpp
 		*/
 		struct Alias : public Instruction
 		{
-			Alias() { type = INS_ALIAS; }
+			Value* op1 = nullptr,
+				 * op2 = nullptr;
+
+			Alias()										{ type = INS_ALIAS; }
 
 			void print() override;
 
-			void for_each_lvalue(ValueFn fn) override {}
-			void for_each_rvalue(ValueFn fn) override {}
-			void for_each_value(ValueFn fn) override {}
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{}
 
-			Token get_type() override { return TOKEN_NONE; }
+			Token get_type() override					{ return TOKEN_NONE; }
 
-			Value* get_value() override { return nullptr; }
+			Value* get_value() override					{ return nullptr; }
 
-			void set_value(Value* v) override {}
+			void set_value(Value* v) override			{}
 
-			std::string get_value_str() override { return {}; }
+			std::string get_value_str() override		{ return {}; }
 
-			static bool check_class(Instruction* i) { return i->type == INS_ALIAS; }
+			static bool check_class(Instruction* i)		{ return i->type == INS_ALIAS; }
 		};
 
 		/*
@@ -160,9 +179,8 @@ namespace kpp
 		*/
 		struct ValueInt : public Instruction
 		{
-			Value* value = nullptr;
-
-			Int int_val {};
+			Value* op1 = nullptr,
+				 * op2 = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -170,17 +188,17 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op1)) op1 = new_val; }
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
 			
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op1; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op1 = v; }
 			
-			std::string get_value_str() override		{ return value->name; }
+			std::string get_value_str() override		{ return op1->name; }
 			//std::string get_value_str() override		{ return std::to_string(int_val.i64); }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_VALUE_INT; }
@@ -191,7 +209,7 @@ namespace kpp
 		*/
 		struct ValueId : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -199,17 +217,17 @@ namespace kpp
 
 			void print() override						{};
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op)) op = new_val; }
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op ? op->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_VALUE_ID; }
 		};
@@ -219,36 +237,36 @@ namespace kpp
 		*/
 		struct BinaryOp : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op1 = nullptr;
 			
-			Instruction* left = nullptr,
-					   * right = nullptr;
+			Instruction* op2_i = nullptr,
+					   * op3_i = nullptr;
 
-			Token op = TOKEN_NONE,
+			Token operation = TOKEN_NONE,
 				  ty = TOKEN_NONE;
 
 			BinaryOp()									{ type = INS_BINARY_OP; }
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op1)) op1 = new_val; }
+			void for_each_right_op(ValueFn fn) override
 			{
-				if (auto new_val = fn(left->get_value()))
-					left->set_value(new_val);
+				if (auto new_val = fn(op2_i->get_value()))
+					op2_i->set_value(new_val);
 
-				if (auto new_val = fn(right->get_value()))
-					right->set_value(new_val);
+				if (auto new_val = fn(op3_i->get_value()))
+					op3_i->set_value(new_val);
 			}
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); for_each_right_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op1; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op1 = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op1 ? op1->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_BINARY_OP; }
 		};
@@ -258,28 +276,28 @@ namespace kpp
 		*/
 		struct UnaryOp : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op1 = nullptr;
 
-			Instruction* operand = nullptr;
+			Instruction* op2_i = nullptr;
 
-			Token op = TOKEN_NONE,
+			Token operation = TOKEN_NONE,
 				  ty = TOKEN_NONE;
 
 			UnaryOp()									{ type = INS_UNARY_OP; }
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(operand->get_value())) operand->set_value(new_val); }
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op1)) op1 = new_val; }
+			void for_each_right_op(ValueFn fn) override	{ if (auto new_val = fn(op2_i->get_value())) op2_i->set_value(new_val); }
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); for_each_right_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op1; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op1 = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op1 ? op1->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_UNARY_OP; }
 		};
@@ -297,9 +315,9 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{}
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{}
 
 			Token get_type() override					{ return TOKEN_NONE; }
 
@@ -317,7 +335,7 @@ namespace kpp
 		*/
 		struct StackAlloc : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op = nullptr;
 
 			Token ty;
 
@@ -325,17 +343,17 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
 			
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op ? op->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_STACK_ALLOC; }
 		};
@@ -345,27 +363,27 @@ namespace kpp
 		*/
 		struct Store : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op1 = nullptr;
+
+			Instruction* op2_i = nullptr;
 
 			Token ty = TOKEN_NONE;
-
-			Instruction* operand = nullptr;
 
 			Store()										{ type = INS_STORE; }
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(operand->get_value())) operand->set_value(new_val); }
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op1)) op1 = new_val; }
+			void for_each_right_op(ValueFn fn) override	{ if (auto new_val = fn(op2_i->get_value())) op2_i->set_value(new_val); }
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); for_each_right_op(fn); }
 			
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op1; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op1 = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op1 ? op1->name : ""; }
 			
 			static bool check_class(Instruction* i)		{ return i->type == INS_STORE; }
 		};
@@ -375,9 +393,9 @@ namespace kpp
 		*/
 		struct Load : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op1 = nullptr;
 
-			ValueId* vid = nullptr;
+			ValueId* op2_i = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -385,17 +403,17 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(vid->get_value())) vid->set_value(new_val); }
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); for_each_rvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op1)) op1 = new_val; }
+			void for_each_right_op(ValueFn fn) override	{ if (auto new_val = fn(op2_i->get_value())) op2_i->set_value(new_val); }
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); for_each_right_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op1; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op1 = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op1 ? op1->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_LOAD; }
 		};
@@ -409,26 +427,26 @@ namespace kpp
 
 			std::unordered_set<Value*> values;
 			
-			Value* value = nullptr;
+			Value* op = nullptr;
 
-			Phi(Value* value) : value(value)			{ type = INS_PHI; }
+			Phi(Value* op) : op(op)						{ type = INS_PHI; }
 
 			void add_block(Block* b)					{ blocks.push_back(b); }
 			void add_value(Value* v)					{ values.insert(v); }
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{ if (auto new_val = fn(value)) value = new_val; }
-			void for_each_rvalue(ValueFn fn) override	{ for (auto v : values) fn(v); }
-			void for_each_value(ValueFn fn) override	{ for_each_lvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op)) op = new_val; }
+			void for_each_right_op(ValueFn fn) override	{ for (auto v : values) fn(v); }
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
 
 			Token get_type() override					{ return TOKEN_NONE; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op ? op->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_PHI; }
 		};
@@ -440,7 +458,6 @@ namespace kpp
 		{
 			std::vector<Instruction*> items;
 			std::vector<Phi*> phis;
-
 			std::vector<Block*> refs;
 
 			std::set<Block*, dom_set_order> doms;
@@ -448,8 +465,6 @@ namespace kpp
 			std::unordered_set<reg*> regs_assigned;
 
 			std::string name;
-
-			using items_it = decltype(items)::iterator;
 
 			Block* prev = nullptr,
 				 * next = nullptr,
@@ -459,19 +474,54 @@ namespace kpp
 
 			bool is_entry = false,
 				 is_last = false;
+
+			struct
+			{
+				x64::instruction_list instructions;
+
+				int instructions_offset = -1,
+					total_bytes = 0;
+			} asm_info {};
+
+			using items_it = decltype(items)::iterator;
+
+			Block()														{ type = INS_BLOCK; }
+
+			bool is_empty() const										{ return items.empty(); }
+
+			Block* get_last_ref() const									{ return (refs.empty() ? nullptr : refs.back()); }
+
+			Instruction* get_jump_item()								{ return (items.empty() ? nullptr : items.back()); }
 			
-			Block()										{ type = INS_BLOCK; }
+			x64::Instruction* get_first_instruction()					{ return (asm_info.instructions.empty() ? nullptr : asm_info.instructions.front()); }
+			x64::Instruction* get_jump_instruction()					{ return (asm_info.instructions.empty() ? nullptr : asm_info.instructions.back()); }
 
-			bool is_empty() const						{ return items.empty(); }
+			void add_item(Instruction* item)							{ item->block_owner = this; items.push_back(item); }
+			void add_phi(Phi* phi)										{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
+			void add_ref(Block* block)									{ refs.push_back(block); }
 
-			Instruction* get_control_flow_item()		{ return (items.empty() ? nullptr : items.back()); }
+			void add_instructions(const x64::instruction_list& ilist)
+			{
+				for (const auto& i : ilist)
+				{
+					asm_info.instructions.push_back(i);
+					asm_info.total_bytes += i->len;
+				}
+			}
 
-			void add_item(Instruction* item)			{ item->block_owner = this; items.push_back(item); }
-			void add_phi(Phi* phi)						{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
-			void add_ref(Block* block)					{ refs.push_back(block); }
+			void add_phi_undo_alias(Value* op1, Value* op2)
+			{
+				auto alias = new Alias();
 
-			void add_items(const items_it& begin, const items_it& end)
-														{ items.insert(items.end(), begin, end); }
+				alias->op1 = op1;
+				alias->op2 = op2;
+				alias->block_owner = this;
+
+				items.insert(items.end() - 1, alias);
+			}
+
+			void add_items(const items_it& begin, const items_it& end)	{ items.insert(items.end(), begin, end); }
+			void set_instructions_offset(int v)							{ asm_info.instructions_offset = v; }
 
 			void fix_ref(Block* old_block, Block* new_block)
 			{
@@ -479,25 +529,31 @@ namespace kpp
 					*it = new_block;
 			}
 
+			int get_instructions_count() const							{ return static_cast<int>(asm_info.instructions.size()); }
+			int get_instructions_offset() const							{ return asm_info.instructions_offset; }
+			int get_total_bytes() const									{ return asm_info.total_bytes; }
+
+			decltype(asm_info.instructions)& get_instructions()			{ return asm_info.instructions; }
+
 			void for_each_successor(BlockFn fn);
 			void for_each_successor_deep(BlockRetFn fn);
 			void for_each_dom(BlockRetFn fn);
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{}
+			void for_each_left_op(ValueFn fn) override					{}
+			void for_each_right_op(ValueFn fn) override					{}
+			void for_each_op(ValueFn fn) override						{}
 
-			Token get_type() override					{ return TOKEN_NONE; }
+			Token get_type() override									{ return TOKEN_NONE; }
 
-			Value* get_value() override					{ return nullptr; }
+			Value* get_value() override									{ return nullptr; }
 			
-			void set_value(Value* v) override			{}
+			void set_value(Value* v) override							{}
 			
-			std::string get_value_str() override		{ return name; }
+			std::string get_value_str() override						{ return name; }
 
-			static bool check_class(Instruction* i)		{ return i->type == INS_BLOCK; }
+			static bool check_class(Instruction* i)						{ return i->type == INS_BLOCK; }
 		};
 
 		/*
@@ -514,9 +570,9 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{ if (auto new_val = fn(comparison->get_value())) comparison->set_value(new_val); }
-			void for_each_value(ValueFn fn) override	{ for_each_rvalue(fn); }
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{ if (auto new_val = fn(comparison->get_value())) comparison->set_value(new_val); }
+			void for_each_op(ValueFn fn) override		{ for_each_right_op(fn); }
 
 			Token get_type() override					{ return comparison->get_type(); }
 
@@ -536,13 +592,15 @@ namespace kpp
 		{
 			Block* target = nullptr;
 
+			bool unused = false;
+
 			Branch()									{ type = INS_BRANCH; }
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override	{}
-			void for_each_value(ValueFn fn) override	{}
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override	{}
+			void for_each_op(ValueFn fn) override		{}
 
 			Token get_type() override					{ return target->get_type(); }
 
@@ -560,7 +618,7 @@ namespace kpp
 		*/
 		struct Return : public Instruction
 		{
-			Value* value = nullptr;
+			Value* op = nullptr;
 
 			Token ty = TOKEN_NONE;
 
@@ -568,22 +626,22 @@ namespace kpp
 
 			void print() override;
 			
-			void for_each_lvalue(ValueFn fn) override	{}
-			void for_each_rvalue(ValueFn fn) override
+			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_right_op(ValueFn fn) override
 			{ 
-				if (value)
-					if (auto new_val = fn(value))
-						value = new_val;
+				if (op)
+					if (auto new_val = fn(op))
+						op = new_val;
 			}
-			void for_each_value(ValueFn fn) override	{ for_each_rvalue(fn); }
+			void for_each_op(ValueFn fn) override		{ for_each_right_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return value; }
+			Value* get_value() override					{ return op; }
 			
-			void set_value(Value* v) override			{ value = v; }
+			void set_value(Value* v) override			{ op = v; }
 			
-			std::string get_value_str() override		{ return value ? value->name : ""; }
+			std::string get_value_str() override		{ return op ? op->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_RETURN; }
 		};
@@ -699,8 +757,6 @@ namespace kpp
 
 			void add_item(Instruction* item)
 			{
-				item->index = curr_item_index++;
-
 				curr_block->add_item(item);
 			}
 
@@ -735,7 +791,18 @@ namespace kpp
 
 				value->block_owner = curr_block;
 				value->definer = item;
-				value->name = (rtti::safe_cast<StackAlloc>(item) ? name : "v" + std::to_string(curr_temp_var_index++));
+
+				if (rtti::safe_cast<StackAlloc>(item))
+				{
+					value->name = name;
+					//value->storage_type = STORAGE_STACK;
+				}
+				else
+				{
+					value->name = "v" + std::to_string(curr_temp_var_index++);
+				}
+
+				value->storage_type = STORAGE_REGISTER;
 
 				values.insert({ value->name, value });
 				values_real_name_lookup.insert({ name, value });
@@ -830,7 +897,7 @@ namespace kpp
 				curr_item_index = 0;
 			}
 
-			Branch* create_branch(Block* block = nullptr, Block* target = nullptr)
+			Branch* create_branch(Block* block, Block* target)
 			{
 				auto branch = new Branch();
 				if (!branch)
@@ -927,7 +994,6 @@ namespace kpp
 		void print_prototype(ir::Prototype* prototype);
 		void print_block(ir::Block* block);
 		void print_item(ir::Instruction* item);
-
 		void add_prototype(ir::Prototype* prototype);
 
 		bool generate();

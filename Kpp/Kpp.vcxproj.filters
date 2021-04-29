@@ -88,6 +88,21 @@
     <ClCompile Include="asm\x64\x64.cpp">
       <Filter>asm\x64</Filter>
     </ClCompile>
+    <ClCompile Include="asm\x64\instruction.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\arithmetic.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\memory.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\compare.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\control.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
@@ -141,6 +156,21 @@
       <Filter>asm\x64</Filter>
     </ClInclude>
     <ClInclude Include="asm\x64\x64.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\instruction.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\arithmetic.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\memory.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\compare.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\control.h">
       <Filter>asm\x64</Filter>
     </ClInclude>
   </ItemGroup>
