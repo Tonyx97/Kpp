@@ -109,6 +109,9 @@
     <ClCompile Include="asm\x64\label.cpp">
       <Filter>asm\x64</Filter>
     </ClCompile>
+    <ClCompile Include="ssa\optimization.cpp">
+      <Filter>ssa</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
@@ -184,6 +187,9 @@
     </ClInclude>
     <ClInclude Include="asm\x64\label.h">
       <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="ssa\optimization.h">
+      <Filter>ssa</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

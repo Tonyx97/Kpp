@@ -394,8 +394,19 @@ bool ssa_gen::insert_phis()
 
 			auto phi = new ir::Phi(v);
 
-			for (auto predecessor : b->refs)
-				phi->add_block(predecessor);
+			const auto& v_defs = ctx.defs_by_blocks[v];
+
+			std::function<void(ir::Block*)> add_phi_blocks = [&](ir::Block* pb)
+			{
+				for (auto predecessor : pb->refs)
+				{
+					if (v_defs.contains(predecessor))
+						phi->add_block(predecessor);
+					else add_phi_blocks(predecessor);
+				}
+			};
+
+			add_phi_blocks(b);
 
 			b->add_phi(phi);
 		}
@@ -472,7 +483,10 @@ bool ssa_gen::rename_values(ir::Block* entry)
 					const auto& block_value_map = ver_info[phi_b];
 
 					if (auto it = block_value_map.find(original_val); it != block_value_map.end())
+					{
 						phi->add_value(it->second);
+						PRINT(C_DARK_RED, "'%s", it->second->name.c_str());
+					}
 				}
 			}
 		});

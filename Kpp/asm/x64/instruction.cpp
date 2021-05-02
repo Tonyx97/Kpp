@@ -4,6 +4,16 @@
 
 using namespace kpp;
 
+int x64::instruction_list::calc_total_bytes()
+{
+	total_bytes = 0;
+
+	for (auto ie : list)
+		total_bytes += ie->len;
+
+	return total_bytes;
+}
+
 void x64::print_instruction(x64::Instruction* ie)
 {
 	if (!ie->prefixes.empty())

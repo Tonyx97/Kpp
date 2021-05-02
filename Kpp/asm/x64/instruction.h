@@ -22,6 +22,8 @@ namespace kpp
 		{
 			instruction_list_vec list;
 
+			int total_bytes = 0;
+
 			instruction_list()										{}
 			instruction_list(Instruction* ie)						{ add_instruction(ie); }
 
@@ -32,6 +34,7 @@ namespace kpp
 			auto end() const										{ return list.end(); }
 
 			int size() const										{ return static_cast<int>(list.size()); }
+			int calc_total_bytes();
 
 			bool empty() const										{ return list.empty(); }
 

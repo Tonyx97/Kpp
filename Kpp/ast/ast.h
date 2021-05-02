@@ -195,13 +195,15 @@ namespace kpp
 
 			std::vector<Expr*> stmts;
 
+			Token ty = TOKEN_I32;
+
 			struct Prototype* prototype = nullptr;
 
 			ExprCall(const std::string& name) : name(name) { type = EXPR_CALL; }
 			
-			void set_ty(Token ty)						   {}
+			void set_ty(Token ty)						   { this->ty = ty;}
 			
-			Token get_ty()								   { return TOKEN_NONE; }
+			Token get_ty()								   { return ty; }
 
 			std::string get_name() override				   { return name; }
 

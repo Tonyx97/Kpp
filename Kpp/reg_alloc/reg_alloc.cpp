@@ -66,8 +66,6 @@ bool reg_alloc::calculate()
 		}*/
 	}
 
-	ir.print_ir();
-
 	return true;
 }
 
@@ -84,7 +82,7 @@ bool reg_alloc::calculate_register_usage(ssa_ctx* ctx, ir::Block* block)
 	{
 		i->for_each_right_op([&](ir::Value* v)
 		{
-			if (v->life.last == i)
+			if (v->life.last == i && !v->storage.default_r)
 			{
 				free_reg(block, v->storage.r);
 				PRINT_TABS_NL(C_RED, 1, "'%s' -> '%s' freed", v->name.c_str(), STRINGIFY_REGISTER(v->storage.r->id).c_str());
@@ -95,7 +93,7 @@ bool reg_alloc::calculate_register_usage(ssa_ctx* ctx, ir::Block* block)
 
 		i->for_each_left_op([&](ir::Value* v)
 		{
-			if (v->life.first != v->life.last)
+			if (v->life.first != v->life.last && !v->storage.default_r)
 			{
 				v->storage.r = alloc_reg(block);
 				PRINT_TABS_NL(C_GREEN, 1, "'%s' -> '%s' allocated", v->name.c_str(), STRINGIFY_REGISTER(v->storage.r->id).c_str());

@@ -112,7 +112,8 @@ namespace kpp
 
 			struct
 			{
-				reg* r = nullptr;
+				reg* r = nullptr,
+				   * default_r = nullptr;
 
 				Int integer {};
 			} storage;
@@ -316,21 +317,25 @@ namespace kpp
 
 			struct Prototype* prototype = nullptr;
 
+			Value* op = nullptr;
+
+			Token ty = TOKEN_NONE;
+
 			Call()										{ type = INS_CALL; }
 
 			void print() override;
 			
-			void for_each_left_op(ValueFn fn) override	{}
+			void for_each_left_op(ValueFn fn) override	{ if (auto new_val = fn(op)) op = new_val; }
 			void for_each_right_op(ValueFn fn) override	{}
-			void for_each_op(ValueFn fn) override		{}
+			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
 
-			Token get_type() override					{ return TOKEN_NONE; }
+			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return nullptr; }
+			Value* get_value() override					{ return op; }
 			
-			void set_value(Value* v) override			{}
+			void set_value(Value* v) override			{ op = v; }
 			
-			std::string get_value_str() override		{ return {}; }
+			std::string get_value_str() override		{ return op->name; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_CALL; }
 		};
@@ -350,7 +355,7 @@ namespace kpp
 			
 			void for_each_left_op(ValueFn fn) override	{}
 			void for_each_right_op(ValueFn fn) override	{}
-			void for_each_op(ValueFn fn) override		{ for_each_left_op(fn); }
+			void for_each_op(ValueFn fn) override		{}
 			
 			Token get_type() override					{ return ty; }
 
@@ -428,7 +433,7 @@ namespace kpp
 		*/
 		struct Phi : public Instruction
 		{
-			std::vector<Block*> blocks;
+			std::unordered_set<Block*> blocks;
 
 			std::unordered_set<Value*> values;
 			
@@ -436,7 +441,7 @@ namespace kpp
 
 			Phi(Value* op) : op(op)						{ type = INS_PHI; }
 
-			void add_block(Block* b)					{ blocks.push_back(b); }
+			void add_block(Block* b)					{ blocks.insert(b); }
 			void add_value(Value* v)					{ values.insert(v); }
 
 			void print() override;
@@ -498,6 +503,8 @@ namespace kpp
 			Instruction* get_jump_item()								{ return (items.empty() ? nullptr : items.back()); }
 			
 			x64::Instruction* get_label()								{ return asm_info.label; }
+
+			void remove_item(Instruction* item)							{ items.erase(std::remove(items.begin(), items.end(), item)); }
 
 			void add_item(Instruction* item)							{ item->block_owner = this; items.push_back(item); }
 			void add_phi(Phi* phi)										{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
@@ -655,14 +662,16 @@ namespace kpp
 
 			std::vector<Block*> blocks;
 
+			std::string name;
+
 			dom_tree* dominance_tree = nullptr;
 
 			ssa_ctx* ssa = nullptr;
 
+			uint32_t address = 0;
+
 			size_t stack_size = 0,
 				   aligned_stack_size = 0;
-
-			std::string name;
 
 			Body* body = nullptr;
 
@@ -674,6 +683,7 @@ namespace kpp
 			bool is_empty() const					{ return blocks.empty(); }
 
 			void add_param(PrototypeParam* param)	{ params.push_back(param); }
+			void set_address(uint32_t v)			{ address = v; }
 			
 			Block* get_entry_block()				{ return (blocks.empty() ? nullptr : blocks[0]); }
 			Block* get_exit_block()					{ return (blocks.empty() ? nullptr : blocks.back()); }

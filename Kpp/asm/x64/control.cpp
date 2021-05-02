@@ -14,6 +14,8 @@ x64::instruction_list x64::generate_control_instruction(ir::Instruction* i)
 		return gen_jump(branch);
 	else if (auto branch_cond = rtti::safe_cast<ir::BranchCond>(i))
 		return gen_cond_jump(branch_cond);
+	else if (auto call = rtti::safe_cast<ir::Call>(i))
+		return gen_call(call);
 	else if (auto ret = rtti::safe_cast<ir::Return>(i))
 		return gen_ret(ret);
 
@@ -69,6 +71,17 @@ x64::instruction_list x64::gen_ret(ir::Return* i)
 	ies.add_instruction(ie);
 
 	return ies;
+}
+
+x64::instruction_list x64::gen_call(ir::Call* i)
+{
+	auto ie = new Instruction(i);
+
+	ie->add_opcode(0xE8);
+	ie->set_imm(0, 4);
+	ie->generate();
+
+	return { ie };
 }
 
 bool x64::fix_jump(Instruction* ie, int imm)

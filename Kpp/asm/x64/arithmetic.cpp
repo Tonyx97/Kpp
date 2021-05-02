@@ -48,11 +48,11 @@ x64::instruction_list x64::gen_add(ir::Value* op1, ir::Value* op2, ir::Value* op
 
 	if (op1_r == op3_r)
 	{
-		auto rax = get_reg(RAX);
+		auto temp = get_reg(RCX);
 
-		ies.add_instructions(gen_mov(rax, op3), gen_mov(op3, op2));
+		ies.add_instructions(gen_mov(temp, op3), gen_mov(op3, op2));
 
-		ie->set_modrm(op1_r->id, rax->id, 0b11);
+		ie->set_modrm(op1_r->id, temp->id, 0b11);
 	}
 	else if (op1_r != op2_r)
 	{
@@ -91,11 +91,11 @@ x64::instruction_list x64::gen_sub(ir::Value* op1, ir::Value* op2, ir::Value* op
 
 	if (op1_r == op3_r)
 	{
-		auto rax = get_reg(RAX);
+		auto temp = get_reg(RCX);
 
-		ies.add_instructions(gen_mov(rax, op3), gen_mov(op3, op2));
+		ies.add_instructions(gen_mov(temp, op3), gen_mov(op3, op2));
 
-		ie->set_modrm(op1_r->id, digit | rax->id, 0b11);
+		ie->set_modrm(op1_r->id, digit | temp->id, 0b11);
 	}
 	else if (op1_r != op2_r)
 	{
@@ -124,11 +124,11 @@ x64::instruction_list x64::gen_mul(ir::Value* op1, ir::Value* op2, ir::Value* op
 
 	if (op1_r == op3_r)
 	{
-		auto rax = get_reg(RAX);
+		auto temp = get_reg(RCX);
 
-		ies.add_instructions(gen_mov(rax, op3), gen_mov(op3, op2));
+		ies.add_instructions(gen_mov(temp, op3), gen_mov(op3, op2));
 
-		ie->set_modrm(rax->id, op1_r->id, 0b11);
+		ie->set_modrm(temp->id, op1_r->id, 0b11);
 	}
 	else if (op1_r != op2_r)
 	{

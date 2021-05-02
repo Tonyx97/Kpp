@@ -47,7 +47,9 @@ namespace kpp::ir
 
 	void Call::print()
 	{
-		PRINT_TABS(C_PURPLE, 1, "call " + prototype->name + " ");
+		PRINT_TABS(C_YELLOW, 1, op->name);
+		PRINT_NNL(C_WHITE, " = ");
+		PRINT_NNL(C_PURPLE, "call " + prototype->name + " ");
 
 		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto param) { return param->get_value_str(); });
 
@@ -225,7 +227,7 @@ namespace kpp::ir
 		{
 			auto original_val = op->original ? op->original : op;
 
-			dbg::print_vec<ir::Block>(C_YELLOW, blocks, ", ", [&](auto p)
+			dbg::print_set<ir::Block>(C_YELLOW, blocks, ", ", [&](auto p)
 			{
 				return original_val->name + "." + p->name;
 			});
@@ -497,8 +499,12 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 ir::Call* ir_gen::generate_from_expr_call(ast::ExprCall* expr)
 {
 	auto call = new ir::Call();
-
+	
 	call->prototype = get_defined_prototype(expr->prototype);
+	call->ty = expr->get_ty();
+	call->op = pi.add_value({}, call);
+	call->op->storage.default_r = x64::get_reg(RAX);
+	call->op->storage.r = call->op->storage.default_r;
 
 	for (auto&& param : expr->stmts)
 	{

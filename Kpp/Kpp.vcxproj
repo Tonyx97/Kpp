@@ -32,6 +32,7 @@
     <ClCompile Include="parser\parser.cpp" />
     <ClCompile Include="reg_alloc\reg_alloc.cpp" />
     <ClCompile Include="semantic\semantic.cpp" />
+    <ClCompile Include="ssa\optimization.cpp" />
     <ClCompile Include="ssa\ssa.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +59,7 @@
     <ClInclude Include="parser\parser.h" />
     <ClInclude Include="reg_alloc\reg_alloc.h" />
     <ClInclude Include="semantic\semantic.h" />
+    <ClInclude Include="ssa\optimization.h" />
     <ClInclude Include="ssa\ssa.h" />
     <ClInclude Include="utils\rtti.h" />
     <ClInclude Include="utils\utils.h" />

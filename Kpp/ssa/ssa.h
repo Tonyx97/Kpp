@@ -69,7 +69,7 @@ namespace kpp
 
 		ssa_ctx ctx {};
 
-		ir_gen ir;
+		ir_gen& ir;
 
 		bool enable_debug = false;
 

@@ -6,6 +6,7 @@
 #include <semantic/semantic.h>
 #include <ir/ir.h>
 #include <ssa/ssa.h>
+#include <ssa/optimization.h>
 #include <reg_alloc/reg_alloc.h>
 #include <asm/asm.h>
 #include <asm/x64/x64.h>
@@ -13,6 +14,8 @@
 int main(int argc, char** argv)
 {
 	dbg::setup_console();
+
+	kpp::x64::init_arquitecture();
 
 	PRINT(C_CYAN, "---------- Lexer (Lexic Analysis) ----------\n");
 
@@ -98,8 +101,6 @@ int main(int argc, char** argv)
 
 	PRINT(C_CYAN, "---------- Registers Allocation ----------\n");
 
-	kpp::x64::init_arquitecture();
-
 	kpp::reg_alloc reg_alloc(ir_gen);
 
 	reg_alloc.init();
@@ -109,9 +110,18 @@ int main(int argc, char** argv)
 		reg_alloc.calculate();
 	}
 
-	kpp::asm_gen asm_gen(ir_gen);
+	PRINT(C_CYAN, "\n---------- Optimizations ----------\n");
+
+	kpp::optimization opt(ir_gen);
+
+	{
+		PROFILE("Optimization Time");
+		opt.optimize();
+	}
 
 	PRINT(C_CYAN, "\n---------- ASM ----------\n");
+
+	kpp::asm_gen asm_gen(ir_gen);
 
 	asm_gen.init();
 
