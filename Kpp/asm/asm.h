@@ -6,12 +6,15 @@
 #include "x64/memory.h"
 #include "x64/compare.h"
 #include "x64/control.h"
+#include "x64/label.h"
 
 namespace kpp
 {
 	class asm_gen
 	{
 	private:
+
+		x64::instruction_list instructions;
 
 		ir_gen& ir;
 
@@ -21,11 +24,13 @@ namespace kpp
 		~asm_gen();
 
 		bool init();
+		bool fix_jumps();
 
-		std::vector<x64::Instruction*> generate_from_binary_op(ir::BinaryOp* i);
-		std::vector<x64::Instruction*> generate_from_store(ir::Store* i);
-		std::vector<x64::Instruction*> generate_from_value_int(ir::ValueInt* i);
-		std::vector<x64::Instruction*> generate_from_alias(ir::Alias* i);
-		std::vector<x64::Instruction*> generate_from_any_branch(ir::Instruction* i);
+		x64::instruction_list generate_from_binary_op(ir::BinaryOp* i);
+		x64::instruction_list generate_from_store(ir::Store* i);
+		x64::instruction_list generate_from_value_int(ir::ValueInt* i);
+		x64::instruction_list generate_from_alias(ir::Alias* i);
+		x64::instruction_list generate_from_load(ir::Load* i);
+		x64::instruction_list generate_from_any_branch(ir::Instruction* i);
 	};
 }

@@ -66,6 +66,8 @@ void ast::Printer::print_stmt(Base* stmt)
 		print_if(stmt_if);
 	else if (auto stmt_for = rtti::safe_cast<StmtFor>(stmt))
 		print_for(stmt_for);
+	else if (auto stmt_return = rtti::safe_cast<StmtReturn>(stmt))
+		print_return(stmt_return);
 	else if (auto expr = rtti::safe_cast<Expr>(stmt))
 		print_expr(expr);
 }
@@ -111,6 +113,13 @@ void ast::Printer::print_for(ast::StmtFor* stmt_for)
 	print_body(stmt_for->body);
 
 	--curr_level;
+}
+
+void ast::Printer::print_return(ast::StmtReturn* stmt_return)
+{
+	PRINT_TABS_NL(C_BLUE, curr_level, "Return");
+
+	print_expr(stmt_return->expr);
 }
 
 void ast::Printer::print_expr(Expr* expr)

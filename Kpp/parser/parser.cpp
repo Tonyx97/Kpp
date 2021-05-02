@@ -214,6 +214,10 @@ ast::Base* parser::parse_statement()
 
 			return new ast::StmtFor(condition, init, step, parse_body(nullptr));
 		}
+		else if (lex.is(*type, TOKEN_RETURN))
+		{
+			return new ast::StmtReturn(lex.is_current(TOKEN_SEMICOLON) ? nullptr : parse_expression());
+		}
 	}
 	
 	return parse_expression();

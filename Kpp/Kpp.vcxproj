@@ -15,7 +15,9 @@
     <ClCompile Include="asm\x64\arithmetic.cpp" />
     <ClCompile Include="asm\x64\compare.cpp" />
     <ClCompile Include="asm\x64\control.cpp" />
+    <ClCompile Include="asm\x64\conversion.cpp" />
     <ClCompile Include="asm\x64\instruction.cpp" />
+    <ClCompile Include="asm\x64\label.cpp" />
     <ClCompile Include="asm\x64\memory.cpp" />
     <ClCompile Include="asm\x64\registers.cpp" />
     <ClCompile Include="asm\x64\x64.cpp" />
@@ -38,7 +40,9 @@
     <ClInclude Include="asm\x64\arithmetic.h" />
     <ClInclude Include="asm\x64\compare.h" />
     <ClInclude Include="asm\x64\control.h" />
+    <ClInclude Include="asm\x64\conversion.h" />
     <ClInclude Include="asm\x64\instruction.h" />
+    <ClInclude Include="asm\x64\label.h" />
     <ClInclude Include="asm\x64\memory.h" />
     <ClInclude Include="asm\x64\registers.h" />
     <ClInclude Include="asm\x64\x64.h" />

@@ -17,10 +17,10 @@ x64::instruction_list x64::generate_compare_instruction(ir::BinaryOp* i)
 
 x64::instruction_list x64::gen_compare(ir::Value* l, ir::Value* r)
 {
-	auto ie = new x64::Instruction();
-
 	auto left_r = l->storage.r,
 		 right_r = r->storage.r;
+
+	auto ie = new Instruction();
 
 	if (left_r->id == RAX)
 		ie->add_opcode(0x3D);

@@ -38,7 +38,7 @@ void x64::for_each_register(const std::function<register_fn>& fn)
 		fn(r);
 }
 
-reg* x64::get_register_info(reg_id id)
+reg* x64::get_reg(reg_id id)
 {
 	auto it = registers.find(id);
 	return (it != registers.end() ? it->second : nullptr);

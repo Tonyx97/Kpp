@@ -36,6 +36,7 @@ namespace kpp
 		enum StorageType
 		{
 			STORAGE_STACK,
+			STORAGE_MEMORY,
 			STORAGE_REGISTER,
 			STORAGE_INTEGER,
 			STORAGE_UNKNOWN,
@@ -43,6 +44,7 @@ namespace kpp
 
 		struct Value;
 		struct Block;
+		struct Return;
 
 		using ValueFn = const std::function<Value*(Value*)>&;
 		using BlockFn = const std::function<void(Block*)>&;
@@ -106,10 +108,13 @@ namespace kpp
 
 			Value* original = nullptr;
 
-			union
+			Return* ret = nullptr;
+
+			struct
 			{
 				reg* r = nullptr;
-				Int integer;
+
+				Int integer {};
 			} storage;
 
 			StorageType storage_type = STORAGE_UNKNOWN;
@@ -477,10 +482,7 @@ namespace kpp
 
 			struct
 			{
-				x64::instruction_list instructions;
-
-				int instructions_offset = -1,
-					total_bytes = 0;
+				x64::Instruction* label = nullptr;
 			} asm_info {};
 
 			using items_it = decltype(items)::iterator;
@@ -491,25 +493,18 @@ namespace kpp
 
 			Block* get_last_ref() const									{ return (refs.empty() ? nullptr : refs.back()); }
 
+			Block* get_asm_target(bool target_if_false = true);
+
 			Instruction* get_jump_item()								{ return (items.empty() ? nullptr : items.back()); }
 			
-			x64::Instruction* get_first_instruction()					{ return (asm_info.instructions.empty() ? nullptr : asm_info.instructions.front()); }
-			x64::Instruction* get_jump_instruction()					{ return (asm_info.instructions.empty() ? nullptr : asm_info.instructions.back()); }
+			x64::Instruction* get_label()								{ return asm_info.label; }
 
 			void add_item(Instruction* item)							{ item->block_owner = this; items.push_back(item); }
 			void add_phi(Phi* phi)										{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
 			void add_ref(Block* block)									{ refs.push_back(block); }
+			void add_items(const items_it& begin, const items_it& end)	{ items.insert(items.end(), begin, end); }
 
-			void add_instructions(const x64::instruction_list& ilist)
-			{
-				for (const auto& i : ilist)
-				{
-					asm_info.instructions.push_back(i);
-					asm_info.total_bytes += i->len;
-				}
-			}
-
-			void add_phi_undo_alias(Value* op1, Value* op2)
+			void add_phi_alias(Value* op1, Value* op2)
 			{
 				auto alias = new Alias();
 
@@ -520,20 +515,13 @@ namespace kpp
 				items.insert(items.end() - 1, alias);
 			}
 
-			void add_items(const items_it& begin, const items_it& end)	{ items.insert(items.end(), begin, end); }
-			void set_instructions_offset(int v)							{ asm_info.instructions_offset = v; }
+			void set_label(x64::Instruction* label)						{ asm_info.label = label; }
 
 			void fix_ref(Block* old_block, Block* new_block)
 			{
 				if (auto it = std::find(refs.begin(), refs.end(), old_block); it != refs.end())
 					*it = new_block;
 			}
-
-			int get_instructions_count() const							{ return static_cast<int>(asm_info.instructions.size()); }
-			int get_instructions_offset() const							{ return asm_info.instructions_offset; }
-			int get_total_bytes() const									{ return asm_info.total_bytes; }
-
-			decltype(asm_info.instructions)& get_instructions()			{ return asm_info.instructions; }
 
 			void for_each_successor(BlockFn fn);
 			void for_each_successor_deep(BlockRetFn fn);
@@ -618,9 +606,11 @@ namespace kpp
 		*/
 		struct Return : public Instruction
 		{
-			Value* op = nullptr;
+			Instruction* op_i = nullptr;
 
 			Token ty = TOKEN_NONE;
+
+			bool reg_in_place = false;
 
 			Return()									{ type = INS_RETURN; }
 
@@ -629,19 +619,20 @@ namespace kpp
 			void for_each_left_op(ValueFn fn) override	{}
 			void for_each_right_op(ValueFn fn) override
 			{ 
-				if (op)
-					if (auto new_val = fn(op))
-						op = new_val;
+				if (op_i)
+					if (auto new_val = fn(op_i->get_value()))
+						op_i->set_value(new_val);
 			}
+
 			void for_each_op(ValueFn fn) override		{ for_each_right_op(fn); }
 
 			Token get_type() override					{ return ty; }
 
-			Value* get_value() override					{ return op; }
+			Value* get_value() override					{ return op_i->get_value(); }
 			
-			void set_value(Value* v) override			{ op = v; }
+			void set_value(Value* v) override			{ op_i->set_value(v); }
 			
-			std::string get_value_str() override		{ return op ? op->name : ""; }
+			std::string get_value_str() override		{ return op_i ? op_i->get_value()->name : ""; }
 
 			static bool check_class(Instruction* i)		{ return i->type == INS_RETURN; }
 		};
@@ -913,17 +904,6 @@ namespace kpp
 
 				return branch;
 			}
-
-			Return* create_return(Token ty)
-			{
-				auto ret = new Return();
-
-				ret->ty = ty;
-
-				add_item(ret);
-
-				return ret;
-			}
 		};
 
 		struct IR
@@ -1010,6 +990,7 @@ namespace kpp
 		ir::Call* generate_from_expr_call(ast::ExprCall* expr);
 		bool generate_from_expr_binary_op_cond(ast::ExprBinaryOp* expr, ir::Block* target_if_true = nullptr, ir::Block* target_if_false = nullptr);
 		ir::Instruction* generate_from_if(ast::StmtIf* stmt_if);
+		ir::Instruction* generate_from_return(ast::StmtReturn* stmt_return);
 
 		ir::Prototype* get_defined_prototype(ast::Prototype* prototype);
 

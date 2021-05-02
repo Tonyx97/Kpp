@@ -131,6 +131,12 @@ namespace kpp
 			}
 		}
 
+		namespace math
+		{
+			template <typename T>
+			bool in_range(const T& v, const T& min, const T& max) { return (v >= min && v <= max); }
+		}
+
 		namespace winapi
 		{
 			inline bool get_PATH(std::vector<std::string>& paths)
@@ -163,6 +169,21 @@ namespace kpp
 					paths.push_back(path);
 
 				return true;
+			}
+
+			inline void copy_to_clipboard(const std::string& str)
+			{
+				const size_t len = str.length() + 1;
+
+				auto mem = GlobalAlloc(GMEM_MOVEABLE, len);
+
+				memcpy(GlobalLock(mem), str.data(), len);
+
+				GlobalUnlock(mem);
+				OpenClipboard(0);
+				EmptyClipboard();
+				SetClipboardData(CF_TEXT, mem);
+				CloseClipboard();
 			}
 		}
 	}

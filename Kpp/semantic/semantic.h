@@ -48,6 +48,7 @@ namespace kpp
 		bool analyze_body(ast::StmtBody* body);
 		bool analyze_expr(ast::Expr* expr);
 		bool analyze_if(ast::StmtIf* stmt_if);
+		bool analyze_return(ast::StmtReturn* stmt_return);
 
 		void add_prototype_decl(const std::string& name);
 		void add_prototype(const std::string& name);

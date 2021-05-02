@@ -2,6 +2,8 @@
 
 #include <graph_viz/gv.h>
 
+#include <asm/x64/registers.h>
+
 #include "ir.h"
 
 using namespace kpp;
@@ -33,6 +35,7 @@ namespace kpp::ir
 		v->definer = definer;
 		v->storage_type = storage_type;
 		v->storage = storage;
+		v->ret = ret;
 	}
 
 	void Alias::print()
@@ -167,6 +170,16 @@ namespace kpp::ir
 				dom->for_each_dom(fn);
 	}
 
+	Block* Block::get_asm_target(bool target_if_false)
+	{
+		auto jmp_item = get_jump_item();
+
+		if (auto branch = rtti::safe_cast<Branch>(jmp_item))		 return (branch->unused ? nullptr : branch->target);
+		else if (auto bcond = rtti::safe_cast<BranchCond>(jmp_item)) return (target_if_false ? bcond->target_if_false : bcond->target_if_true);
+
+		return nullptr;
+	}
+
 	void BranchCond::print()
 	{
 		PRINT_TABS(C_GREEN, 1, "bcond ");
@@ -196,8 +209,8 @@ namespace kpp::ir
 	void Return::print()
 	{
 		PRINT_TABS(C_GREEN, 1, "ret ");
-		if (op)
-			PRINT(C_YELLOW, op->name);
+		if (op_i)
+			PRINT(C_YELLOW, op_i->get_value_str());
 		else PRINT(C_BLUE, "void");
 	}
 
@@ -333,8 +346,6 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 		entry_block->add_ref(entry_block);
 
 		ir_prototype->body = generate_from_body(prototype->body);
-
-		pi.create_return(ir_prototype->ret_ty);
 	}
 
 	add_prototype(ir_prototype);
@@ -355,9 +366,10 @@ ir::Body* ir_gen::generate_from_body(ast::StmtBody* body)
 
 	for (auto stmt : body->stmts)
 	{
-		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))		generate_from_body(body);
-		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))		generate_from_expr(expr);
-		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt)) generate_from_if(stmt_if);
+		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))					generate_from_body(body);
+		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))					generate_from_expr(expr);
+		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt))				generate_from_if(stmt_if);
+		else if (auto stmt_return = rtti::safe_cast<ast::StmtReturn>(stmt))		generate_from_return(stmt_return);
 	}
 
 	return ir_body;
@@ -623,6 +635,23 @@ ir::Instruction* ir_gen::generate_from_if(ast::StmtIf* stmt_if)
 	pi.add_block(end_block);
 
 	return nullptr;
+}
+
+ir::Instruction* ir_gen::generate_from_return(ast::StmtReturn* stmt_return)
+{
+	auto ret = new ir::Return();
+
+	if (auto expr = stmt_return->expr)
+	{
+		ret->ty = expr->get_ty();
+
+		if (auto op_i = ret->op_i = generate_from_expr(expr))
+			op_i->get_value()->ret = ret;
+	}
+
+	pi.add_item(ret);
+
+	return ret;
 }
 
 ir::Prototype* ir_gen::get_defined_prototype(ast::Prototype* prototype)

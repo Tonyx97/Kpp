@@ -44,6 +44,7 @@ namespace kpp
 			STMT_BODY,
 			STMT_IF,
 			STMT_FOR,
+			STMT_RETURN,
 		};
 
 		/*
@@ -59,9 +60,7 @@ namespace kpp
 		*/
 		struct Expr : public Base
 		{
-			//ExprType expr_type = EXPR_NONE;
-
-			Expr()	{ type = STMT_EXPR; }
+			Expr()								{ type = STMT_EXPR; }
 
 			virtual void set_ty(Token ty) = 0;
 
@@ -69,7 +68,7 @@ namespace kpp
 
 			virtual std::string get_name() = 0;
 
-			static bool check_class(Base* i) { return i->type >= STMT_EXPR && i->type <= EXPR_CALL; }
+			static bool check_class(Base* i)	{ return i->type >= STMT_EXPR && i->type <= EXPR_CALL; }
 		};
 
 		/*
@@ -126,7 +125,8 @@ namespace kpp
 			Token ty = TOKEN_NONE;
 
 			ExprDeclOrAssign(const std::string& name, Expr* value = nullptr, Token ty = TOKEN_NONE) :
-				name(name), value(value), ty(ty)		{ type = EXPR_DECL_OR_ASSIGN; }
+							 name(name), value(value), ty(ty)
+														{ type = EXPR_DECL_OR_ASSIGN; }
 
 			bool is_declaration() const					{ return (ty != TOKEN_NONE); }
 			
@@ -152,15 +152,16 @@ namespace kpp
 			Expr* right = nullptr;
 
 			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) :
-				left(left), op(op), ty(ty), right(right) { type = EXPR_BINARY_OP; }
+						 left(left), op(op), ty(ty), right(right)
+															{ type = EXPR_BINARY_OP; }
 			
-			void set_ty(Token ty)						 { this->ty = ty; }
+			void set_ty(Token ty)							{ this->ty = ty; }
 			
-			Token get_ty()								 { return ty; }
+			Token get_ty()									{ return ty; }
 
-			std::string get_name() override				 { return STRINGIFY_TOKEN(op); };
+			std::string get_name() override					{ return STRINGIFY_TOKEN(op); };
 
-			static bool check_class(Base* i)			 { return i->type == EXPR_BINARY_OP; }
+			static bool check_class(Base* i)				{ return i->type == EXPR_BINARY_OP; }
 		};
 
 		/*
@@ -245,7 +246,7 @@ namespace kpp
 			Expr* condition = nullptr;
 
 			Base* init = nullptr,
-					* step = nullptr;
+				* step = nullptr;
 
 			StmtBody* body = nullptr;
 
@@ -254,6 +255,18 @@ namespace kpp
 											 { type = STMT_FOR; }
 
 			static bool check_class(Base* i) { return i->type == STMT_FOR; }
+		};
+
+		/*
+		* StmtReturn
+		*/
+		struct StmtReturn : public Base
+		{
+			Expr* expr = nullptr;
+
+			StmtReturn(Expr* expr) : expr(expr) { type = STMT_RETURN; }
+
+			static bool check_class(Base* i)	{ return i->type == STMT_RETURN; }
 		};
 
 		/*
@@ -296,6 +309,7 @@ namespace kpp
 			void print_stmt(ast::Base* stmt);
 			void print_if(ast::StmtIf* stmt_if);
 			void print_for(ast::StmtFor* stmt_for);
+			void print_return(ast::StmtReturn* stmt_return);
 			void print_expr(ast::Expr* expr);
 			void print_decl_or_assign(ast::ExprDeclOrAssign* assign);
 			void print_expr_int(ast::ExprIntLiteral* expr);

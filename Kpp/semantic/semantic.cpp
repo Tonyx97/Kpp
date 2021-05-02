@@ -60,9 +60,10 @@ bool semantic::analyze_body(ast::StmtBody* body)
 {
 	for (auto&& stmt : body->stmts)
 	{
-		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))		analyze_body(body);
-		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))		analyze_expr(expr);
-		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt)) analyze_if(stmt_if);
+		if (auto body = rtti::safe_cast<ast::StmtBody>(stmt))					analyze_body(body);
+		else if (auto expr = rtti::safe_cast<ast::Expr>(stmt))					analyze_expr(expr);
+		else if (auto stmt_if = rtti::safe_cast<ast::StmtIf>(stmt))				analyze_if(stmt_if);
+		else if (auto stmt_return = rtti::safe_cast<ast::StmtReturn>(stmt))		analyze_return(stmt_return);
 	}
 
 	return true;
@@ -180,6 +181,19 @@ bool semantic::analyze_if(ast::StmtIf* stmt_if)
 			return false;
 
 	return true;
+}
+
+bool semantic::analyze_return(ast::StmtReturn* stmt_return)
+{
+	if (stmt_return->expr && !analyze_expr(stmt_return->expr))
+		return false;
+
+	if (stmt_return->expr ? stmt_return->expr->get_ty() == pi.curr_prototype->ret_ty : pi.curr_prototype->ret_ty == TOKEN_VOID)
+		return true;
+
+	add_error("There is no valid conversion from '%s' to '%s'", STRINGIFY_TYPE(stmt_return->expr ? stmt_return->expr->get_ty() : TOKEN_VOID).c_str(), STRINGIFY_TYPE(pi.curr_prototype->ret_ty).c_str());
+
+	return false;
 }
 
 void semantic::add_prototype_decl(const std::string& name)

@@ -66,6 +66,8 @@ bool reg_alloc::calculate()
 		}*/
 	}
 
+	ir.print_ir();
+
 	return true;
 }
 
@@ -117,7 +119,7 @@ bool reg_alloc::undo_phis(ir::Prototype* prototype)
 			for (auto param : phi->values)
 				for (auto predecessor : b->refs)
 					if (param->life.has_block(predecessor))
-						predecessor->add_phi_undo_alias(phi->op, param);
+						predecessor->add_phi_alias(phi->op, param);
 
 	return true;
 }

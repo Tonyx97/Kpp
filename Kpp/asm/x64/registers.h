@@ -63,6 +63,6 @@ namespace kpp
 		void destroy_registers();
 		void for_each_register(const std::function<register_fn>& fn);
 
-		reg* get_register_info(reg_id id);
+		reg* get_reg(reg_id id);
 	}
 }

@@ -103,6 +103,12 @@
     <ClCompile Include="asm\x64\control.cpp">
       <Filter>asm\x64</Filter>
     </ClCompile>
+    <ClCompile Include="asm\x64\conversion.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\label.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
@@ -171,6 +177,12 @@
       <Filter>asm\x64</Filter>
     </ClInclude>
     <ClInclude Include="asm\x64\control.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\conversion.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\label.h">
       <Filter>asm\x64</Filter>
     </ClInclude>
   </ItemGroup>
