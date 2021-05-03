@@ -71,11 +71,13 @@ bool reg_alloc::calculate()
 
 bool reg_alloc::calculate_register_usage(ssa_ctx* ctx, ir::Block* block)
 {
+	auto prototype = ctx->prototype;
+
 	for (auto v_in : ctx->in_out[block].in)
 		for (auto v_ver : v_in->vers)
 			if (v_ver->storage.r && v_ver->life.has_block(block))
 				block->regs_assigned.insert(v_ver->storage.r);
-
+	
 	PRINT(C_CYAN, "'%s':", block->name.c_str());
 
 	for (auto i : block->items)
@@ -95,7 +97,8 @@ bool reg_alloc::calculate_register_usage(ssa_ctx* ctx, ir::Block* block)
 		{
 			if (v->life.first != v->life.last && !v->storage.default_r)
 			{
-				v->storage.r = alloc_reg(block);
+				prototype->add_register(v->storage.r = alloc_reg(block));
+
 				PRINT_TABS_NL(C_GREEN, 1, "'%s' -> '%s' allocated", v->name.c_str(), STRINGIFY_REGISTER(v->storage.r->id).c_str());
 			}
 

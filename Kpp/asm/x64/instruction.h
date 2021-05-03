@@ -139,7 +139,8 @@ namespace kpp
 			
 			int len = 0;
 
-			bool target_label_look_up = false;
+			bool target_label_look_up = false,
+				 jump_reversed = false;
 
 			Instruction()																{}
 			Instruction(uint8_t opcode)													{ add_opcode(opcode); generate(); }
@@ -159,6 +160,7 @@ namespace kpp
 			void set_sib(uint8_t base, uint8_t index = 0, uint8_t scale = 0)			{ sib.base = base;	 sib.index = index;	sib.scale = scale;				sib.used = true; }
 			void set_imm(uint64_t v, uint8_t size)										{ imm.value = v;	 imm.size = size;									imm.used = true; }
 			void set_disp(uint64_t v, uint8_t size)										{ disp.value = v;	 disp.size = size;									disp.used = true; }
+			void set_digit(uint8_t v)													{ modrm.reg |= v; }
 			void set_target_label(Instruction* ie, bool look_up = false)				{ target_label = ie; target_label_look_up = look_up; }
 
 			void generate()

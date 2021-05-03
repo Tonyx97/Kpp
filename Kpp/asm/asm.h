@@ -6,6 +6,10 @@
 #include "x64/memory.h"
 #include "x64/compare.h"
 #include "x64/control.h"
+#include "x64/stack.h"
+#include "x64/alignment.h"
+#include "x64/bit.h"
+#include "x64/built_in.h"
 #include "x64/label.h"
 
 namespace kpp
@@ -18,6 +22,8 @@ namespace kpp
 
 		ir_gen& ir;
 
+		ir::Prototype* curr_prototype = nullptr;
+
 	public:
 
 		asm_gen(ir_gen& ir) : ir(ir) {}
@@ -27,12 +33,8 @@ namespace kpp
 		bool fix_jumps();
 		bool fix_calls();
 
-		x64::instruction_list generate_from_binary_op(ir::BinaryOp* i);
-		x64::instruction_list generate_from_store(ir::Store* i);
-		x64::instruction_list generate_from_value_int(ir::ValueInt* i);
-		x64::instruction_list generate_from_alias(ir::Alias* i);
-		x64::instruction_list generate_from_load(ir::Load* i);
-		x64::instruction_list generate_from_call(ir::Call* i);
-		x64::instruction_list generate_from_any_branch(ir::Instruction* i);
+		ir::Prototype* get_curr_prototype() const { return curr_prototype; }
 	};
 }
+
+inline std::unique_ptr<kpp::asm_gen> g_asm;

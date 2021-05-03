@@ -12,7 +12,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="asm\asm.cpp" />
+    <ClCompile Include="asm\x64\alignment.cpp" />
     <ClCompile Include="asm\x64\arithmetic.cpp" />
+    <ClCompile Include="asm\x64\bit.cpp" />
+    <ClCompile Include="asm\x64\built_in.cpp" />
     <ClCompile Include="asm\x64\compare.cpp" />
     <ClCompile Include="asm\x64\control.cpp" />
     <ClCompile Include="asm\x64\conversion.cpp" />
@@ -20,6 +23,7 @@
     <ClCompile Include="asm\x64\label.cpp" />
     <ClCompile Include="asm\x64\memory.cpp" />
     <ClCompile Include="asm\x64\registers.cpp" />
+    <ClCompile Include="asm\x64\stack.cpp" />
     <ClCompile Include="asm\x64\x64.cpp" />
     <ClCompile Include="ast\ast.cpp" />
     <ClCompile Include="configs\configs.cpp" />
@@ -38,7 +42,10 @@
   <ItemGroup>
     <ClInclude Include="asm.h" />
     <ClInclude Include="asm\asm.h" />
+    <ClInclude Include="asm\x64\alignment.h" />
     <ClInclude Include="asm\x64\arithmetic.h" />
+    <ClInclude Include="asm\x64\bit.h" />
+    <ClInclude Include="asm\x64\built_in.h" />
     <ClInclude Include="asm\x64\compare.h" />
     <ClInclude Include="asm\x64\control.h" />
     <ClInclude Include="asm\x64\conversion.h" />
@@ -46,6 +53,7 @@
     <ClInclude Include="asm\x64\label.h" />
     <ClInclude Include="asm\x64\memory.h" />
     <ClInclude Include="asm\x64\registers.h" />
+    <ClInclude Include="asm\x64\stack.h" />
     <ClInclude Include="asm\x64\x64.h" />
     <ClInclude Include="ast\ast.h" />
     <ClInclude Include="configs\configs.h" />

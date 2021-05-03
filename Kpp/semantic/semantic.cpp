@@ -119,6 +119,9 @@ bool semantic::analyze_expr(ast::Expr* expr)
 	}
 	else if (auto call = rtti::safe_cast<ast::ExprCall>(expr))
 	{
+		if (call->built_in)
+			return true;
+
 		const auto& prototype_name = call->name;
 
 		auto prototype = get_prototype(prototype_name);

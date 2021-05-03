@@ -121,9 +121,9 @@ int main(int argc, char** argv)
 
 	PRINT(C_CYAN, "\n---------- ASM ----------\n");
 
-	kpp::asm_gen asm_gen(ir_gen);
+	g_asm = std::make_unique<kpp::asm_gen>(ir_gen);
 
-	asm_gen.init();
+	g_asm->init();
 
 	{
 		PROFILE("ASM Generation Time");

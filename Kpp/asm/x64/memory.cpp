@@ -56,7 +56,7 @@ x64::instruction_list x64::gen_mov(reg* r, ir::Value* op, bool inverse)
 		ie->add_opcode(opcode);
 		ie->set_imm(op_storage.integer.u64, 4);
 	}
-	else if (op_storage_type == ir::STORAGE_REGISTER)
+	else if (op_storage_type == ir::STORAGE_REGISTER && r->id != op_storage.r->id)
 	{
 		ie->add_opcode(0x89);
 
@@ -65,14 +65,14 @@ x64::instruction_list x64::gen_mov(reg* r, ir::Value* op, bool inverse)
 			if (r->id >= R8)
 				ie->set_rex(0, 1, 0, 0);
 
-			ie->set_modrm(op_storage.r->id, r->id % R8, 0b11);
+			ie->set_modrm(op_storage.r->id % R8, r->id % R8, 0b11);
 		}
 		else
 		{
 			if (op_storage.r->id >= R8)
 				ie->set_rex(0, 1, 0, 0);
 
-			ie->set_modrm(r->id, op_storage.r->id % R8, 0b11);
+			ie->set_modrm(r->id % R8, op_storage.r->id % R8, 0b11);
 		}
 	}
 

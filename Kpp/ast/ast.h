@@ -151,8 +151,10 @@ namespace kpp
 
 			Expr* right = nullptr;
 
-			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right) :
-						 left(left), op(op), ty(ty), right(right)
+			bool assign = false;
+
+			ExprBinaryOp(Expr* left, Token op, Token ty, Expr* right, bool assign = false) :
+						 left(left), op(op), ty(ty), right(right), assign(assign)
 															{ type = EXPR_BINARY_OP; }
 			
 			void set_ty(Token ty)							{ this->ty = ty; }
@@ -199,7 +201,10 @@ namespace kpp
 
 			struct Prototype* prototype = nullptr;
 
-			ExprCall(const std::string& name) : name(name) { type = EXPR_CALL; }
+			bool built_in = false;
+
+			ExprCall(const std::string& name, bool built_in = false)
+					 : name(name), built_in(built_in)		{ type = EXPR_CALL; }
 			
 			void set_ty(Token ty)						   { this->ty = ty;}
 			

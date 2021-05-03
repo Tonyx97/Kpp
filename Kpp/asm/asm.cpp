@@ -3,6 +3,8 @@
 #include <ir/ir.h>
 #include <ssa/ssa.h>
 
+#include "x64/registers.h"
+
 #include "asm.h"
 
 using namespace kpp;
@@ -11,6 +13,8 @@ asm_gen::~asm_gen()
 {
 
 }
+
+uint8_t* g_fn_bytes = nullptr;
 
 bool asm_gen::init()
 {
@@ -22,6 +26,8 @@ bool asm_gen::init()
 
 	for (auto prototype : prototypes)
 	{
+		curr_prototype = prototype;
+
 		// create all block labels first
 
 		for (auto b : prototype->blocks)
@@ -29,6 +35,12 @@ bool asm_gen::init()
 			b->set_label(x64::gen_label());
 			PRINT(C_RED, "'%s' has 0x%llx", b->name.c_str(), b->get_label());
 		}
+
+		// push all used registers
+
+		if (prototype->is_callee())
+			for (auto r : prototype->used_regs)
+				instructions.add_instructions(x64::gen_push(r));
 
 		// generate x64 asm code
 
@@ -38,40 +50,65 @@ bool asm_gen::init()
 
 			for (auto i : b->items)
 			{
-				if (auto binary_op = rtti::safe_cast<ir::BinaryOp>(i))
-					instructions.add_instructions(generate_from_binary_op(binary_op));
-				else if (auto store = rtti::safe_cast<ir::Store>(i))
-					instructions.add_instructions(generate_from_store(store));
-				else if (auto value_int = rtti::safe_cast<ir::ValueInt>(i))
-					instructions.add_instructions(generate_from_value_int(value_int));
-				else if (auto alias = rtti::safe_cast<ir::Alias>(i))
-					instructions.add_instructions(generate_from_alias(alias));
-				else if (auto load = rtti::safe_cast<ir::Load>(i))
-					instructions.add_instructions(generate_from_load(load));
-				else if (auto call = rtti::safe_cast<ir::Call>(i))
-					instructions.add_instructions(generate_from_call(call));
-				else if (auto branch = rtti::safe_cast<ir::Branch>(i))
+				if (i->unused)
+					continue;
+
+				switch (i->type)
 				{
-					if (!(branch->unused = (branch->target->get_last_ref() == b)))
-						instructions.add_instructions(generate_from_any_branch(i));
+				case ir::INS_BINARY_OP:
+					instructions.add_instructions(x64::generate_binary_op_instruction(rtti::safe_cast<ir::BinaryOp>(i)));
+					break;
+				case ir::INS_VALUE_INT:
+				case ir::INS_ALIAS:
+				case ir::INS_LOAD:
+				case ir::INS_STORE:
+					instructions.add_instructions(x64::generate_memory_op(i));
+					break;
+				case ir::INS_BRANCH_COND:
+				case ir::INS_RETURN:
+					instructions.add_instructions(x64::generate_control_instruction(i));
+					break;
+				case ir::INS_CALL:
+				{
+					auto call = rtti::safe_cast<ir::Call>(i);
+					instructions.add_instructions(call->built_in ? x64::generate_built_in_fn(call) : x64::generate_control_instruction(call));
+					break;
 				}
-				else if (i->type == ir::INS_BRANCH_COND || i->type == ir::INS_RETURN)
-					instructions.add_instructions(generate_from_any_branch(i));
+				case ir::INS_BRANCH:
+				{
+					auto branch = rtti::safe_cast<ir::Branch>(i);
+
+					if (!(branch->unused = (branch->target->get_last_ref() == b)))
+						instructions.add_instructions(x64::generate_control_instruction(i));
+
+					break;
+				}
+				}
 			}
 
-			if (auto jmp_target = b->get_asm_target())
+			bool jump_reversed = false;
+
+			if (auto jmp_target = b->get_asm_target(jump_reversed))
 				if (auto jmp_ins = instructions.last())
 				{
+					jmp_ins->jump_reversed = jump_reversed;
 					jmp_ins->set_target_label(jmp_target->get_label(), b->reverse_postorder_index < jmp_target->reverse_postorder_index);
+
 					PRINT(C_BLUE, "'%s' jumps to label 0x%llx", b->name.c_str(), jmp_target->get_label());
 				}
 		}
 
-		x64::reset_label_count();
-
 		prototype->set_address(prototype_offset);
 
-		prototype_offset += instructions.calc_total_bytes();
+		int last_byte_offset = instructions.calc_total_bytes();
+		int aligned_byte_offset = (last_byte_offset + 3) & ~3;
+
+		if (aligned_byte_offset > last_byte_offset)
+			instructions.add_instructions(x64::gen_fn_padding(aligned_byte_offset - last_byte_offset));
+
+		prototype_offset = aligned_byte_offset;
+
+		x64::reset_label_count();
 	}
 
 	// create instructions linking
@@ -115,18 +152,18 @@ bool asm_gen::init()
 
 	// execute test function
 
-	auto fn_bytes = new uint8_t[bytes.size()]();
+	g_fn_bytes = new uint8_t[bytes.size()]();
 
-	if (DWORD old; VirtualProtect(fn_bytes, bytes.size(), PAGE_EXECUTE_READWRITE, &old))
+	if (DWORD old; VirtualProtect(g_fn_bytes, bytes.size(), PAGE_EXECUTE_READWRITE, &old))
 	{
-		memcpy(fn_bytes, bytes.data(), bytes.size());
+		memcpy(g_fn_bytes, bytes.data(), bytes.size());
 
-		auto result = reinterpret_cast<int(__fastcall*)()>(fn_bytes + 8)();
+		auto result = reinterpret_cast<int(__fastcall*)()>(g_fn_bytes + prototypes[3]->address)();
 
-		PRINT(C_GREEN, "[0x%llx] Execution result: %i", fn_bytes, result);
+		PRINT(C_GREEN, "[0x%llx] Execution result: %i", g_fn_bytes, result);
 	}
 
-	delete[] fn_bytes;
+	delete[] g_fn_bytes;
 
 	return true;
 }
@@ -169,7 +206,7 @@ bool asm_gen::fix_calls()
 	
 	for (auto ie : instructions)
 	{
-		if (auto call = rtti::safe_cast<ir::Call>(ie->owner))
+		if (auto call = rtti::safe_cast<ir::Call>(ie->owner); call && !call->built_in)
 		{
 			ie->set_imm(call->prototype->address - offset - 5, 4);
 			ie->regenerate();
@@ -179,39 +216,4 @@ bool asm_gen::fix_calls()
 	}
 
 	return true;
-}
-
-x64::instruction_list asm_gen::generate_from_binary_op(ir::BinaryOp* i)
-{
-	return x64::generate_binary_op_instruction(i);
-}
-
-x64::instruction_list asm_gen::generate_from_store(ir::Store* i)
-{
-	return x64::generate_memory_op(i);
-}
-
-x64::instruction_list asm_gen::generate_from_value_int(ir::ValueInt* i)
-{
-	return x64::generate_memory_op(i);
-}
-
-x64::instruction_list asm_gen::generate_from_alias(ir::Alias* i)
-{
-	return x64::generate_memory_op(i);
-}
-
-x64::instruction_list asm_gen::generate_from_load(ir::Load* i)
-{
-	return x64::generate_memory_op(i);
-}
-
-x64::instruction_list asm_gen::generate_from_call(ir::Call* i)
-{
-	return x64::generate_control_instruction(i);
-}
-
-x64::instruction_list asm_gen::generate_from_any_branch(ir::Instruction* i)
-{
-	return x64::generate_control_instruction(i);
 }

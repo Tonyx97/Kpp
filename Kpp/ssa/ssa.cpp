@@ -46,6 +46,8 @@ bool ssa_gen::build_ssa()
 
 		ok = true;
 
+		ctx->prototype = prototype;
+
 		prototype->ssa = ctx.get();
 	}
 

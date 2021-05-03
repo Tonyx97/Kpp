@@ -13,5 +13,8 @@ namespace kpp
 		instruction_list gen_call(ir::Call* i);
 
 		bool fix_jump(Instruction* ie, int imm);
+
+		void set_jump_small(Instruction* ie, Token op, bool reversed);
+		void set_jump_big(Instruction* ie, Token op, bool reversed);
 	}
 }

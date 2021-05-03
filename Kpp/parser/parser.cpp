@@ -2,6 +2,9 @@
 
 #include "parser.h"
 
+#include <ir/ir.h>
+#include <asm/x64/built_in.h>
+
 using namespace kpp;
 
 parser::parser(lexer& lex) : lex(lex)
@@ -282,23 +285,36 @@ ast::Expr* parser::parse_primary_expression()
 	{
 		auto id = lex.eat();
 
-		if (lex.is_current(TOKEN_ASSIGN))
+		switch (const auto curr_token = lex.current().id)
+		{
+		case TOKEN_ASSIGN:
 		{
 			lex.eat();
 
 			return new ast::ExprDeclOrAssign(id.value, parse_expression());
 		}
-		else if (lex.is_current(TOKEN_PAREN_OPEN))
+		case TOKEN_ADD_ASSIGN:
+		case TOKEN_SUB_ASSIGN:
+		case TOKEN_MUL_ASSIGN:
+		case TOKEN_DIV_ASSIGN:
+		case TOKEN_XOR_ASSIGN:
 		{
 			lex.eat();
 
-			auto call = new ast::ExprCall(curr.value);
+			return new ast::ExprBinaryOp(new ast::ExprId(curr.value), curr_token, TOKEN_I32, parse_expression(), true);
+		}
+		case TOKEN_PAREN_OPEN:
+		{
+			lex.eat();
+
+			auto call = new ast::ExprCall(curr.value, x64::is_built_in_fn(curr.value));
 
 			call->stmts = parse_call_params();
 
 			lex.eat_expect(TOKEN_PAREN_CLOSE);
 
 			return call;
+		}
 		}
 
 		return new ast::ExprId(curr.value);

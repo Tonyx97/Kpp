@@ -1,7 +1,6 @@
 #include <defs.h>
 
 #include <graph_viz/gv.h>
-
 #include <asm/x64/registers.h>
 
 #include "ir.h"
@@ -40,7 +39,8 @@ namespace kpp::ir
 
 	void Alias::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, op1->name);
+		PRINT_TABS(C_DARK_RED, 1, "(unused) ");
+		PRINT_NNL(C_YELLOW, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
 		PRINT(C_YELLOW, op2->name);
 	}
@@ -49,7 +49,7 @@ namespace kpp::ir
 	{
 		PRINT_TABS(C_YELLOW, 1, op->name);
 		PRINT_NNL(C_WHITE, " = ");
-		PRINT_NNL(C_PURPLE, "call " + prototype->name + " ");
+		PRINT_NNL(C_PURPLE, "call " + (prototype ? prototype->name : name) + " ");
 
 		dbg::print_vec<ir::Instruction>(C_WHITE, params, ", ", [](auto param) { return param->get_value_str(); });
 
@@ -66,7 +66,8 @@ namespace kpp::ir
 
 	void Store::print()
 	{
-		PRINT_TABS(C_GREEN, 1, "store ");
+		PRINT_TABS(C_DARK_RED, 1, "(unused) ");
+		PRINT_NNL(C_GREEN, "store ");
 		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty) + "* ");
 		PRINT_NNL(C_YELLOW, op1->name);
 		PRINT_NNL(C_WHITE, ", ");
@@ -76,7 +77,8 @@ namespace kpp::ir
 
 	void Load::print()
 	{
-		PRINT_TABS(C_YELLOW, 1, op1->name);
+		PRINT_TABS(C_DARK_RED, 1, "(unused) ");
+		PRINT_NNL(C_YELLOW, op1->name);
 		PRINT_NNL(C_WHITE, " = ");
 		PRINT_NNL(C_GREEN, "load ");
 		PRINT_NNL(C_BLUE, STRINGIFY_TYPE(ty));
@@ -172,12 +174,22 @@ namespace kpp::ir
 				dom->for_each_dom(fn);
 	}
 
-	Block* Block::get_asm_target(bool target_if_false)
+	Block* Block::get_asm_target(bool& reversed)
 	{
 		auto jmp_item = get_jump_item();
 
-		if (auto branch = rtti::safe_cast<Branch>(jmp_item))		 return (branch->unused ? nullptr : branch->target);
-		else if (auto bcond = rtti::safe_cast<BranchCond>(jmp_item)) return (target_if_false ? bcond->target_if_false : bcond->target_if_true);
+		if (auto branch = rtti::safe_cast<Branch>(jmp_item))
+			return (branch->unused ? nullptr : branch->target);
+		else if (auto bcond = rtti::safe_cast<BranchCond>(jmp_item))
+		{
+			if (next == bcond->target_if_false)
+			{
+				reversed = true;
+				return bcond->target_if_true;
+			}
+
+			return bcond->target_if_false;
+		}
 
 		return nullptr;
 	}
@@ -348,6 +360,13 @@ ir::Prototype* ir_gen::generate_prototype(ast::Prototype* prototype)
 		entry_block->add_ref(entry_block);
 
 		ir_prototype->body = generate_from_body(prototype->body);
+
+		if (!ir_prototype->has_return)
+		{
+			pi.add_item(new ir::Return());
+
+			ir_prototype->has_return = true;
+		}
 	}
 
 	add_prototype(ir_prototype);
@@ -437,6 +456,8 @@ ir::ValueInt* ir_gen::generate_from_expr_int_literal(ast::ExprIntLiteral* expr)
 
 	value_int->ty = expr->ty;
 	value_int->op1 = pi.add_value(expr->get_name(), value_int);
+	value_int->op1->storage.integer = expr->value;
+	value_int->op1->storage_type = ir::STORAGE_INTEGER;
 	value_int->op2 = new ir::Value();
 	value_int->op2->storage.integer = expr->value;
 	value_int->op2->storage_type = ir::STORAGE_INTEGER;
@@ -457,6 +478,24 @@ ir::BinaryOp* ir_gen::generate_from_expr_binary_op(ast::ExprBinaryOp* expr)
 	binary_op->op1 = pi.add_value(expr->get_name(), binary_op);
 
 	pi.add_item(binary_op);
+
+	if (auto value_id = rtti::safe_cast<ast::ExprId>(expr->left); expr->assign)
+	{
+		auto value_to_store = pi.get_value_from_real_name(value_id->name);
+		if (!value_to_store)
+		{
+			delete binary_op;
+			return nullptr;
+		}
+
+		auto store = new ir::Store();
+
+		store->op1 = value_to_store;
+		store->ty = expr->ty;
+		store->op2_i = binary_op;
+
+		pi.add_item(store);
+	}
 
 	return binary_op;
 }
@@ -499,12 +538,20 @@ ir::Load* ir_gen::generate_from_expr_id(ast::ExprId* expr)
 ir::Call* ir_gen::generate_from_expr_call(ast::ExprCall* expr)
 {
 	auto call = new ir::Call();
+
+	const bool built_in = expr->built_in;
 	
-	call->prototype = get_defined_prototype(expr->prototype);
+	if (call->prototype = built_in ? nullptr : get_defined_prototype(expr->prototype))
+		call->prototype->callee_count++;
+
+	call->name = expr->name;
 	call->ty = expr->get_ty();
 	call->op = pi.add_value({}, call);
 	call->op->storage.default_r = x64::get_reg(RAX);
 	call->op->storage.r = call->op->storage.default_r;
+	call->built_in = built_in;
+
+	pi.curr_prototype->caller_count++;
 
 	for (auto&& param : expr->stmts)
 	{
@@ -654,6 +701,8 @@ ir::Instruction* ir_gen::generate_from_return(ast::StmtReturn* stmt_return)
 		if (auto op_i = ret->op_i = generate_from_expr(expr))
 			op_i->get_value()->ret = ret;
 	}
+
+	pi.curr_prototype->has_return = true;
 
 	pi.add_item(ret);
 

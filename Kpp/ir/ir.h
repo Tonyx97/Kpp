@@ -5,6 +5,7 @@
 #include <dom_tree/dom_tree.h>
 
 #include <asm/x64/instruction.h>
+#include <asm/x64/registers.h>
 
 namespace kpp
 {
@@ -65,6 +66,8 @@ namespace kpp
 			InsType type = INS_UNKNOWN;
 
 			int index = -1;
+
+			bool unused = false;
 			
 			virtual void print() = 0;
 			virtual void for_each_left_op(ValueFn fn) = 0;
@@ -315,11 +318,15 @@ namespace kpp
 		{
 			std::vector<Instruction*> params;
 
+			std::string name;
+
 			struct Prototype* prototype = nullptr;
 
 			Value* op = nullptr;
 
 			Token ty = TOKEN_NONE;
+
+			bool built_in = false;
 
 			Call()										{ type = INS_CALL; }
 
@@ -498,13 +505,27 @@ namespace kpp
 
 			Block* get_last_ref() const									{ return (refs.empty() ? nullptr : refs.back()); }
 
-			Block* get_asm_target(bool target_if_false = true);
+			Block* get_asm_target(bool& reversed);
 
 			Instruction* get_jump_item()								{ return (items.empty() ? nullptr : items.back()); }
 			
 			x64::Instruction* get_label()								{ return asm_info.label; }
 
-			void remove_item(Instruction* item)							{ items.erase(std::remove(items.begin(), items.end(), item)); }
+			auto remove_item(Instruction* item)
+			{ 
+				auto it = items.erase(std::remove(items.begin(), items.end(), item));
+
+				if (it != items.end())
+					delete item;
+
+				return it;
+			}
+
+			auto replace_item(Instruction* from, Instruction* to)
+			{
+				if (auto it = remove_item(from); it != items.end())
+					items.insert(it, to);
+			}
 
 			void add_item(Instruction* item)							{ item->block_owner = this; items.push_back(item); }
 			void add_phi(Phi* phi)										{ phi->block_owner = this; items.insert(items.begin(), phi); phis.push_back(phi); }
@@ -587,8 +608,6 @@ namespace kpp
 		{
 			Block* target = nullptr;
 
-			bool unused = false;
-
 			Branch()									{ type = INS_BRANCH; }
 
 			void print() override;
@@ -658,6 +677,8 @@ namespace kpp
 			std::unordered_map<std::string, Value*> values,
 													values_real_name_lookup;
 
+			std::set<reg*, reg_set_order> used_regs;
+
 			std::vector<PrototypeParam*> params;
 
 			std::vector<Block*> blocks;
@@ -677,12 +698,21 @@ namespace kpp
 
 			Token ret_ty = TOKEN_NONE;
 
+			int callee_count = 0,
+				caller_count = 0;
+
+			bool has_return = false;
+
 			Prototype()								{}
 			~Prototype()							{ delete dominance_tree; }
 
 			bool is_empty() const					{ return blocks.empty(); }
+			bool uses_reg(reg* r) const				{ return used_regs.contains(r); }
+			bool is_callee() const					{ return callee_count > 0; }
+			bool is_caller() const					{ return caller_count > 0; }
 
 			void add_param(PrototypeParam* param)	{ params.push_back(param); }
+			void add_register(reg* r)				{ if (r->volatil) used_regs.insert(r); }
 			void set_address(uint32_t v)			{ address = v; }
 			
 			Block* get_entry_block()				{ return (blocks.empty() ? nullptr : blocks[0]); }
@@ -926,11 +956,17 @@ namespace kpp
 	{
 		switch (op)
 		{
+		case TOKEN_ADD_ASSIGN:	return "add";
 		case TOKEN_ADD:			return "add";
+		case TOKEN_SUB_ASSIGN:	return "sub";
 		case TOKEN_SUB:			return "sub";
+		case TOKEN_MUL_ASSIGN:	return "mul";
 		case TOKEN_MUL:			return "mul";
+		case TOKEN_DIV_ASSIGN:	return "div";
 		case TOKEN_DIV:			return "div";
+		case TOKEN_MOD_ASSIGN:	return "mod";
 		case TOKEN_MOD:			return "mod";
+		case TOKEN_XOR_ASSIGN:	return "xor";
 		case TOKEN_XOR:			return "xor";
 		case TOKEN_EQUAL:		return "cmp eq";
 		case TOKEN_NOT_EQUAL:	return "cmp ne";
@@ -940,6 +976,10 @@ namespace kpp
 		case TOKEN_GTE:			return "cmp gte";
 		case TOKEN_LOGICAL_AND:	return "and";
 		case TOKEN_LOGICAL_OR:	return "or";
+		case TOKEN_AND:			return "bit and";
+		case TOKEN_OR:			return "bit or";
+		case TOKEN_SHR:			return "shr";
+		case TOKEN_SHL:			return "shl";
 		}
 
 		return "unknown";

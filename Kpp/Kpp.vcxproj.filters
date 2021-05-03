@@ -112,6 +112,18 @@
     <ClCompile Include="ssa\optimization.cpp">
       <Filter>ssa</Filter>
     </ClCompile>
+    <ClCompile Include="asm\x64\stack.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\alignment.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\built_in.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
+    <ClCompile Include="asm\x64\bit.cpp">
+      <Filter>asm\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
@@ -190,6 +202,18 @@
     </ClInclude>
     <ClInclude Include="ssa\optimization.h">
       <Filter>ssa</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\stack.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\alignment.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\built_in.h">
+      <Filter>asm\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="asm\x64\bit.h">
+      <Filter>asm\x64</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

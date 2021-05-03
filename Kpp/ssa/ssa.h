@@ -36,6 +36,8 @@ namespace kpp
 		std::map<ir::Block*, life_info> in_out;
 
 		std::unordered_set<ir::Value*> ssa_values;
+		
+		ir::Prototype* prototype = nullptr;
 
 		void clear()
 		{
@@ -50,6 +52,8 @@ namespace kpp
 			df_rec.clear();
 			df.clear();
 			in_out.clear();
+
+			prototype = nullptr;
 		}
 	};
 

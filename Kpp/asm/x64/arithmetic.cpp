@@ -7,6 +7,7 @@
 #include "compare.h"
 #include "memory.h"
 #include "conversion.h"
+#include "bit.h"
 
 using namespace kpp;
 
@@ -18,11 +19,20 @@ x64::instruction_list x64::generate_binary_op_instruction(ir::BinaryOp* i)
 
 	switch (i->operation)
 	{
+	case TOKEN_ADD_ASSIGN:
 	case TOKEN_ADD:			return gen_add(op1, op2, op3);
+	case TOKEN_SUB_ASSIGN:
 	case TOKEN_SUB:			return gen_sub(op1, op2, op3);
+	case TOKEN_MUL_ASSIGN:
 	case TOKEN_MUL:			return gen_mul(op1, op2, op3);
+	case TOKEN_DIV_ASSIGN:
 	case TOKEN_DIV:			return gen_div(op1, op2, op3);
+	case TOKEN_XOR_ASSIGN:
 	case TOKEN_XOR:			return gen_xor(op1, op2, op3);
+	case TOKEN_AND:			return gen_bit_and(op1, op2, op3);
+	case TOKEN_OR:			return gen_bit_or(op1, op2, op3);
+	case TOKEN_SHR:			return gen_bit_shr(op1, op2, op3);
+	case TOKEN_SHL:			return gen_bit_shl(op1, op2, op3);
 	case TOKEN_EQUAL:
 	case TOKEN_NOT_EQUAL:
 	case TOKEN_GT:
@@ -128,6 +138,7 @@ x64::instruction_list x64::gen_mul(ir::Value* op1, ir::Value* op2, ir::Value* op
 
 		ies.add_instructions(gen_mov(temp, op3), gen_mov(op3, op2));
 
+		ie->add_opcodes(0x0F, 0xAF);
 		ie->set_modrm(temp->id, op1_r->id, 0b11);
 	}
 	else if (op1_r != op2_r)

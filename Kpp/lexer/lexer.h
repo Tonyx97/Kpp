@@ -190,7 +190,7 @@ namespace kpp
 	namespace regex
 	{
 		static inline std::regex SINGLE_COMMENT("\\/{2}.*$"),
-								 WORD("\\b[a-zA-Z]\\w*\\b"),
+								 WORD("\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"),
 								 INT_LITERAL("(\\-)?[0-9]{1,20}((u|i)(8|16|32|64))?");
 	}
 

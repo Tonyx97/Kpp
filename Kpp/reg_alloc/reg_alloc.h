@@ -4,11 +4,6 @@
 
 namespace kpp
 {
-	struct reg_set_order
-	{
-		template <typename T> bool operator() (const T& x, const T& y) const { return (x->id < y->id); }
-	};
-	
 	class reg_alloc
 	{
 	private:
