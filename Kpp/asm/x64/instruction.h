@@ -144,6 +144,7 @@ namespace kpp
 
 			Instruction()																{}
 			Instruction(uint8_t opcode)													{ add_opcode(opcode); generate(); }
+			Instruction(const std::initializer_list<uint8_t>& op_bytes)					{ opcodes.insert(opcodes.end(), op_bytes.begin(), op_bytes.end()); generate(); }
 			Instruction(ir::Instruction* owner) : owner(owner)							{}
 
 			void add_prefix(uint8_t v)													{ prefixes.push_back(v); }

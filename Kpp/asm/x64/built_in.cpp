@@ -12,6 +12,7 @@ std::unordered_map<std::string, x64::built_in_fn_t> g_built_in_fns =
 {
 	{ "__rdtsc", x64::gen_rdtsc },
 	{ "__int3", x64::gen_int3 },
+	{ "_mm_pause", x64::gen_mm_pause },
 };
 
 x64::instruction_list x64::generate_built_in_fn(ir::Call* i)
@@ -41,6 +42,11 @@ x64::instruction_list x64::gen_rdtsc(ir::Call* i)
 x64::instruction_list x64::gen_int3(ir::Call* i)
 {
 	return { new Instruction(0xCC) };
+}
+
+x64::instruction_list x64::gen_mm_pause(ir::Call* i)
+{
+	return { new Instruction({ 0xF3, 0x90 }) };
 }
 
 bool x64::is_built_in_fn(const std::string& name)

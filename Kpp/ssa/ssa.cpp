@@ -398,6 +398,8 @@ bool ssa_gen::insert_phis()
 
 			const auto& v_defs = ctx.defs_by_blocks[v];
 
+			//
+
 			std::function<void(ir::Block*)> add_phi_blocks = [&](ir::Block* pb)
 			{
 				for (auto predecessor : pb->refs)
@@ -409,6 +411,8 @@ bool ssa_gen::insert_phis()
 			};
 
 			add_phi_blocks(b);
+
+			//
 
 			b->add_phi(phi);
 		}

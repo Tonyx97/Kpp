@@ -11,6 +11,7 @@ namespace kpp
 		instruction_list generate_built_in_fn(ir::Call* i);
 		instruction_list gen_rdtsc(ir::Call* i);
 		instruction_list gen_int3(ir::Call* i);
+		instruction_list gen_mm_pause(ir::Call* i);
 
 		bool is_built_in_fn(const std::string& name);
 	}

@@ -158,6 +158,7 @@ bool asm_gen::init()
 	{
 		memcpy(g_fn_bytes, bytes.data(), bytes.size());
 
+		//auto result = reinterpret_cast<int(__fastcall*)()>(g_fn_bytes + prototypes[0]->address)();
 		auto result = reinterpret_cast<int(__fastcall*)()>(g_fn_bytes + prototypes[3]->address)();
 
 		PRINT(C_GREEN, "[0x%llx] Execution result: %i", g_fn_bytes, result);
