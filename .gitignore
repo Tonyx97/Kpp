@@ -15,7 +15,6 @@
 *.cea
 .vs/
 Release/
-Debug/
 bins/
 Backup/
 Data/
