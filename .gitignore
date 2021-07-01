@@ -13,6 +13,8 @@
 *.tlog
 *.res
 *.cea
+*.iobj
+*.ipdb
 .vs/
 Release/
 bins/
