@@ -330,9 +330,6 @@ namespace kpp
 		bool is(const token_info& token, Token id)		{ return (token.id == id); }
 		bool eof()										{ return tokens.empty(); }
 
-		token_info token(int i) const					{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens[i]); }
-		token_info eaten_token(int i) const				{ return (eaten_tokens.empty() ? token_info { "eof", TOKEN_EOF } : *(eaten_tokens.rbegin() + i)); }
-
 		token_info current() const						{ return (tokens.empty() ? token_info { "eof", TOKEN_EOF } : tokens.back()); }
 
 		Token current_token() const						{ return (tokens.empty() ? TOKEN_EOF : tokens.back().id); }

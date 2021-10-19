@@ -15,6 +15,7 @@
 *.cea
 *.iobj
 *.ipdb
+*.dll
 .vs/
 Release/
 bins/
